@@ -1,13 +1,13 @@
-inceput
-    intreg a <- 0
-    daca (!a)
-    atunci inceput
+begin
+    int a <- 0
+    if (!a)
+    then begin
         a <- a + 2
         a <- a << 1
         write a, "\n"
-    sfarsit
-    altfel inceput
+    end
+    else begin
         write a + 2, "\n"
-    sfarsit
-sfarsit
+    end
+end
 exit 0
