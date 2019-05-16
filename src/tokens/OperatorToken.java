@@ -160,10 +160,16 @@ public class OperatorToken extends Token {
 					asm = "xor " + a + ", " + b + "\n\tand " + a + ", 1\n";
 					break;
 				case SHIFT_LEFT:
-					asm = "shl " + a + ", " + b + "\n";
+					if (bvalue)
+						asm = "shl " + a + ", " + bv + "\n";
+					else
+						asm = "mov cl, " + _LANG_COMPILER.reg(b).addressing.x8.name + "\n\tshl " + a + ", cl\n";
 					break;
 				case SHIFT_RIGHT:
-					asm = "shr " + a + ", " + b + "\n";
+					if (bvalue)
+						asm = "shl " + a + ", " + bv + "\n";
+					else
+						asm = "mov cl, " + _LANG_COMPILER.reg(b).addressing.x8.name + "\n\tshr " + a + ", cl\n";
 					break;
 				case BITWISE_AND:
 					asm = "and " + a + ", " + b + "\n";

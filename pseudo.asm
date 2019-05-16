@@ -65,15 +65,46 @@ readValue:
 	ret
 	global _start
 _start:
+	mov QWORD [a], 0
 	mov r10, 0
-	add r10, 1
-	mov QWORD [a], 1
+	mov QWORD [INTERNAL____CACHE + 0], 0
+	test r10, r10
 	mov r10, 1
-	add r10, 2
-	mov rax, 3
+	je LOGIC_NOT_1
+	mov r10, 0
+LOGIC_NOT_1:
+	cmp r10, 0
+	je .COND_1_FALSE
+;.COND_1_TRUE:
+	add QWORD [a], 2
+	mov r10, QWORD [a]
+	mov r11, 1
+	mov cl, 1
+	shl r10, 1
+	mov QWORD [a], r10
+	mov rax, r10
 	mov r8, 1
 	call printNumber
 	call printNewLine
-	mov rax, 1
-	mov rbx, 0
+	jmp .COND_1_FINAL_END
+.COND_1_FALSE:
+	mov r10, QWORD [a]
+	mov QWORD [INTERNAL____CACHE + 0], r10
+	mov r11, 2
+	add r10, 2
+	mov rax, r10
+	mov r8, 1
+	call printNumber
+	call printNewLine
+.COND_1_FINAL_END:
+	mov eax, 4
+	mov ebx, 1
+	mov ecx, ___end
+	mov edx, ___end_len
+	int 0x80
+	mov rax, 0
+	call printNumber
+	call printNewLine
+	mov eax, 1
+	mov ebx, 0
 	int 0x80

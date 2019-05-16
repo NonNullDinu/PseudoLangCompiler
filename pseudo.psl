@@ -1,3 +1,13 @@
-intreg a <- 0
-a <- a + 1
-write a+2, "\n"
+inceput
+    intreg a <- 0
+    daca (!a)
+    atunci inceput
+        a <- a + 2
+        a <- a << 1
+        write a, "\n"
+    sfarsit
+    altfel inceput
+        write a + 2, "\n"
+    sfarsit
+sfarsit
+exit 0

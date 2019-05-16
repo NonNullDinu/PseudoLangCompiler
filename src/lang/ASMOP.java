@@ -23,12 +23,14 @@ public class ASMOP {
 	public final OPERAND arg1, arg2;
 	public String comment;
 	public boolean isLabel;
+	public boolean isJump;
 
 	public ASMOP(String OP, OPERAND arg1, OPERAND arg2) {
 		this.OP = OP;
 		this.arg1 = arg1;
 		this.arg2 = arg2;
 		isLabel = OP.endsWith(":");
+		isJump = OP.matches("^j(mp|g|ge|s|se|e|ne|nz|z)$");
 	}
 
 	public ASMOP withComment(String comment) {

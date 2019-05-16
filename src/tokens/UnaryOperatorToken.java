@@ -36,8 +36,9 @@ public class UnaryOperatorToken extends Token {
 		return op.asm_code(reg);
 	}
 
+	private static int LOGIC_INDEX = 0;
 	public enum OP {
-		BITWISE_NOT("~");
+		BITWISE_NOT("~"), LOGIC_NOT("!");
 		String pattern;
 
 		OP(String pattern) {
@@ -49,6 +50,10 @@ public class UnaryOperatorToken extends Token {
 			switch (this) {
 				case BITWISE_NOT:
 					asm = "not " + reg;
+					break;
+				case LOGIC_NOT:
+					LOGIC_INDEX++;
+					asm = "test " + reg + ", " + reg + "\n\tmov " + reg + ", 1\n\tje LOGIC_NOT_" + LOGIC_INDEX + "\n\tmov " + reg + ", 0\nLOGIC_NOT_" + LOGIC_INDEX + ":";
 					break;
 			}
 			return "\t" + asm + "\n";
