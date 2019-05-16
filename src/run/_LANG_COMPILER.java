@@ -67,23 +67,40 @@ public class _LANG_COMPILER {
 			"\tint 0x80\n" +
 			"\tret\n" +
 			"readValue:\n" +
+			"\tmov r11, QWORD[INTERNAL____READ_PTR]\n" +
+			"\tmov r12, QWORD[INTERNAL____READ_PTR+8]\n" +
+			"\tcmp r11, r12\n" +
+			"\tjl .l4\n" +
 			"\tmov eax, 3\n" +
 			"\tmov ebx, 0\n" +
 			"\tmov ecx, INTERNAL____READ\n" +
-			"\tmov edx, 18\n" +
+			"\tmov edx, 65536\n" +
 			"\tint 0x80\n" +
 			"\tmov ebx, eax\n" +
 			"\tsub ebx, 1\n" +
+			"\tmov QWORD[INTERNAL____READ_PTR+8], rbx//NO_DELETE\n" +
 			"\tmov r10, 0\n" +
+			"\tjmp .l5\n" +
+			".l4:\n" +
+			"\tmov r10, QWORD[INTERNAL____READ_PTR]\n" +
+			"\tmov rbx, QWORD[INTERNAL____READ_PTR+8]\n" +
+			".l5:\n" +
 			"\tmov rax, 0\n" +
 			".l2:\n" +
 			"\tmovzx rcx, BYTE [INTERNAL____READ + r10]\n" +
+			"\tcmp rcx, 32\n" +
+			"\tje .l3\n" +
+			"\tcmp rcx, 10\n" +
+			"\tje .l3\n" +
 			"\tsub rcx, '0'\n" +
 			"\tINC r10\n" +
 			"\tmul DWORD [const10]\n" +
 			"\tadd rax, rcx\n" +
 			"\tCMP r10d, ebx\n" +
 			"\tJL .l2\n" +
+			".l3:\n" +
+			"\tadd r10, 1\n" +
+			"\tmov QWORD[INTERNAL____READ_PTR], r10//NO_DELETE\n" +
 			"\tret\n" +
 			"\n";
 	private static final List<VAR_> vars = new ArrayList<>();
@@ -273,7 +290,7 @@ public class _LANG_COMPILER {
 	}
 
 	private static void makeAssembly() {
-		assembly = new StringBuilder(";DO NOT EDIT\n;THIS FILE IS COMPUTER GENERATED\n;AS A RESULT OF THE COMPILATION OF \"" + program_file_name + "\"\nsection .text\n" + functions_code + "\n\tglobal _start\n_start:\n");
+		assembly = new StringBuilder(";DO NOT EDIT\n;THIS FILE IS COMPUTER GENERATED\n;AS A RESULT OF THE COMPILATION OF \"" + program_file_name + "\"\nsection .text\n" + functions_code + "\n\tglobal _start\n_start:\n\tmov QWORD[INTERNAL____READ_PTR], 0\n\tmov QWORD[INTERNAL____READ_PTR+8], 0\n");
 		boolean prevdec = true;
 		for (Statement statement : statements) {
 			switch (statement.type) {
@@ -346,13 +363,14 @@ public class _LANG_COMPILER {
 			}
 			rec_ind = 0;
 		}
-		StringBuilder asm_vars = new StringBuilder("section .bss\n\tINTERNAL____READ RESB 19\n");
+		StringBuilder asm_vars = new StringBuilder("section .bss\n\tINTERNAL____READ RESB 65536\n");
+		asm_vars.append("\tINTERNAL____CACHE RESQ 65536\n");//INTERNAL____CACHE
+		asm_vars.append("\tINTERNAL____READ_PTR RESQ 2\n");//INTERNAL____CACHE
 		for (VAR_ var : vars) {
 			asm_vars.append("\t").append(var.name).append(" ").append(var.type.asm_type).append(" 1\n");
 		}
-		asm_vars.append("\tINTERNAL____CACHE RESQ 65536\n");//INTERNAL____CACHE
 		assembly = new StringBuilder(asm_vars + "\n\n" + assembly.toString());
-		asm_vars = new StringBuilder("\n\nsection .rodata\n\tconst10 dd 10\n\tdigits db 48,49,50,51,52,53,54,55,56,57\n\tnew_line DB 10\n\t___end DB \"Process finished execution and returned code \"\n\t___end_len equ $-___end\n");
+		asm_vars = new StringBuilder("\n\nsection .rodata\n\tconst10 dd 10\n\tdigits db 48,49,50,51,52,53,54,55,56,57\n\tnew_line DB 10\n\t___end DB \"Process finished with exit code \"\n\t___end_len equ $-___end\n");
 		for (VAR_ var : dataVars) {
 			asm_vars.append("\t").append(var.name).append(" DB ").append(var.value).append("\n");
 		}
@@ -801,14 +819,14 @@ public class _LANG_COMPILER {
 				continue;
 			}
 			if (op.OP.matches("^mov(zx|sb)?$")) {
-				if ((op.comment == null || !op.comment.equals("POINTER")) && !isRequired(op.arg1.value)) {
+				if ((op.comment == null || !(op.comment.equals("POINTER") || op.comment.equals("NO_DELETE"))) && !isRequired(op.arg1.value)) {
 					OPERATIONS.remove(i);
 					continue;
 				}
 				setrequired(op.arg1.value, false);
 				setrequired(op.arg2.value, true);
 			} else if (op.OP.equals("lea")) {
-				if ((op.comment == null || !op.comment.equals("POINTER")) && !isRequired(op.arg1.value)) {
+				if ((op.comment == null || !(op.comment.equals("POINTER") || op.comment.equals("NO_DELETE"))) && !isRequired(op.arg1.value)) {
 					OPERATIONS.remove(i);
 					continue;
 				}
@@ -1195,11 +1213,11 @@ public class _LANG_COMPILER {
 			int ptr_b = ptr;
 			for (; ptr < j; ptr++) {
 				if (t[ptr] instanceof CommaToken) {
-					ptr++;
 					break;
 				}
 			}
 			Token[] tkn = new Token[ptr - ptr_b];
+			ptr++;
 			System.arraycopy(t, ptr_b, tkn, 0, tkn.length);
 			tokens[k] = tkn;
 		}

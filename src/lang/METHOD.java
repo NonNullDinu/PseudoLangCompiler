@@ -20,7 +20,7 @@ package lang;
 import run._LANG_COMPILER;
 import tokens.*;
 
-import java.util.regex.Pattern;
+import java.util.Arrays;
 
 public enum METHOD {
 	EXIT((m, argTokens) -> {
@@ -88,7 +88,10 @@ public enum METHOD {
 			methodBody.append("\tpop r10\n".repeat(argTokens.length));
 		return methodBody.toString();
 	}),
-	PRINT_DIGIT((m, argTokens) -> _LANG_COMPILER.valueInstructions(argTokens[0]) + "\tlea eax, [digits + r10]\n\tcall print_char\n"),
+	PRINT_DIGIT((m, argTokens) -> {
+		_LANG_COMPILER.rec_ind = 0;
+		return _LANG_COMPILER.valueInstructions(argTokens[0]) + "\tlea eax, [digits + r10]\n\tcall print_char\n";
+	}),
 	ASM((m, argTokens) -> {
 		StringBuilder asm = new StringBuilder();
 		for (Token[] t : argTokens) asm.append(((StringToken) t[0]).str.replaceAll("\"", "")).append('\n');
@@ -99,9 +102,8 @@ public enum METHOD {
 		for (Token[] tk :
 				argTokens) {
 			_LANG_COMPILER.rec_ind = 0;
-			methodBody.append(_LANG_COMPILER.valueInstructions(tk)).append("\tpush r10\n");
-			methodBody.append("\tcall readValue\n");
-			methodBody.append("\tpop r10\n\tmov [r10], rax//POINTER\n");
+			methodBody.append("\n\tcall readValue\n");
+			methodBody.append("\tmov [" + ((IdentifierToken) tk[0]).identifier + "], rax//POINTER\n");
 		}
 		return methodBody.toString();
 	}),
@@ -116,6 +118,7 @@ public enum METHOD {
 					asm.append("\tcall printNewLine\n");
 			} else {
 				_LANG_COMPILER.rec_ind = 0;
+				System.out.println(Arrays.deepToString(a));
 				asm.append(_LANG_COMPILER.valueInstructions(a)).append("\tmov rax, r10\n\tmov r8, 1\n\tcall printNumber\n");
 			}
 		}

@@ -1,13 +1,7 @@
 begin
-    int a <- 0
-    if (!a)
-    then begin
-        a <- a + 2
-        a <- a << 1
-        write a, "\n"
-    end
-    else begin
-        write a + 2, "\n"
-    end
+    int a
+    int b
+    read a, b
+    write a, " ", b, "\n"
 end
 exit 0
