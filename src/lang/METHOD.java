@@ -26,7 +26,8 @@ public enum METHOD {
 	EXIT((m, argTokens) -> {
 		if (argTokens != null && argTokens.length == 1) {
 			return _LANG_COMPILER.valueInstructions(argTokens[0]) + "\tmov eax, 4\n\tmov ebx, 1\n\tmov ecx, ___end\n\tmov edx, ___end_len\n\tint 0x80\n\tmov rax, r10\n\tcall printNumber\n\tcall printNewLine\n\tmov eax, 1\n\tmov ebx, r10d\n\tint 0x80\n";
-		} else return "\tmov eax, 1\n\tmov ebx, 0\n\tint 0x80\n";
+		} else
+			return "\tmov eax, 4\n\tmov ebx, 1\n\tmov ecx, ___end\n\tmov edx, ___end_len\n\tint 0x80\n\tlea rax, [digits]\n\tcall print_char\n\tcall printNewLine\n\tmov eax, 1\n\tmov ebx, r10d\n\tint 0x80\n";
 	}),
 
 	WRITE_TO((m, argTokens) -> {

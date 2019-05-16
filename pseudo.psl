@@ -4,4 +4,4 @@ begin
     read a, b
     write a, " ", b, "\n"
 end
-exit 0
+exit

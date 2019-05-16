@@ -17,7 +17,6 @@
 
 package statements;
 
-import lang.exceptions.ParsingError;
 import tokens.*;
 
 public enum Statement_TYPE {
@@ -26,30 +25,34 @@ public enum Statement_TYPE {
 	CONDITIONAL,
 	WHILE_LOOP,
 	INCREMENT,
+	FOR_LOOP,
 	METHOD_CALL;
 
 	public boolean fits(Token[] t, int ind) {
 		boolean ret = false;
 		switch (this) {
 			case VAR_DECLARE: {
-				ret = (t[ind] instanceof CompositeTypeToken || t[ind] instanceof TypeToken) && (t[ind + 1] instanceof NameToken || t[ind + 1] instanceof IdentifierToken) && (t[ind + 2] instanceof AssignmentToken || t[ind + 2] instanceof NewLineToken);
+				ret = ind < t.length - 2 && (t[ind] instanceof CompositeTypeToken || t[ind] instanceof TypeToken) && (t[ind + 1] instanceof NameToken || t[ind + 1] instanceof IdentifierToken) && (t[ind + 2] instanceof AssignmentToken || t[ind + 2] instanceof NewLineToken);
 				break;
 			}
 			case VAR_UPDATE: {
-				ret = t[ind] instanceof IdentifierToken && t[ind + 1] instanceof AssignmentToken;
+				ret = ind < t.length - 1 && t[ind] instanceof IdentifierToken && t[ind + 1] instanceof AssignmentToken;
 				break;
 			}
 			case CONDITIONAL:
-				ret = t[ind] instanceof IfToken && t[ind + 1] instanceof ParenthesisOpenedToken;
+				ret = ind < t.length - 1 && t[ind] instanceof IfToken && t[ind + 1] instanceof ParenthesisOpenedToken;
 				break;
 			case WHILE_LOOP:
-				ret = t[ind] instanceof WhileToken && t[ind + 1] instanceof ParenthesisOpenedToken;
+				ret = ind < t.length - 1 && t[ind] instanceof WhileToken && t[ind + 1] instanceof ParenthesisOpenedToken;
 				break;
 			case INCREMENT:
-				ret = t[ind] instanceof IdentifierToken && t[ind + 1] instanceof IncrementToken;
+				ret = ind < t.length - 1 && t[ind] instanceof IdentifierToken && t[ind + 1] instanceof IncrementToken;
 				break;
 			case METHOD_CALL:
 				ret = t[ind] instanceof IdentifierToken;
+				break;
+			case FOR_LOOP:
+				ret = t[ind] instanceof ForToken;
 				break;
 		}
 		return ret;

@@ -36,73 +36,11 @@ import java.util.regex.Pattern;
 public class _LANG_COMPILER {
 	private static final int OPTMAX = 32;
 	public static int strCode = 0;
-	private static final String functions_code = "print_char:\n" +
-			"\tpush rax\n" +
-			"\tmov ecx, eax\n" +
-			"\tmov eax, 4\n" +
-			"\tmov ebx, r8d\n" +
-			"\tmov edx, 1\n" +
-			"\tint 0x80\n" +
-			"\tpop rax\n" +
-			"\tret\n" +
-			"printNumber:\n" +
-			"\tpush rax\n" +
-			"\tpush rdx\n" +
-			"\txor edx,edx\n" +
-			"\tdiv dword[const10]\n" +
-			"\ttest eax,eax\n" +
-			"\tje .l1\n" +
-			"\tcall printNumber\n" +
-			".l1:\n" +
-			"\tlea eax, [digits+edx]\n" +
-			"\tcall print_char\n" +
-			"\tpop rdx\n" +
-			"\tpop rax\n" +
-			"\tret\n" +
-			"printNewLine:\n" +
-			"\tmov eax, 4\n" +
-			"\tmov ebx, 1\n" +
-			"\tmov ecx, new_line\n" +
-			"\tmov edx, 1\n" +
-			"\tint 0x80\n" +
-			"\tret\n" +
-			"readValue:\n" +
-			"\tmov r11, QWORD[INTERNAL____READ_PTR]\n" +
-			"\tmov r12, QWORD[INTERNAL____READ_PTR+8]\n" +
-			"\tcmp r11, r12\n" +
-			"\tjl .l4\n" +
-			"\tmov eax, 3\n" +
-			"\tmov ebx, 0\n" +
-			"\tmov ecx, INTERNAL____READ\n" +
-			"\tmov edx, 65536\n" +
-			"\tint 0x80\n" +
-			"\tmov ebx, eax\n" +
-			"\tsub ebx, 1\n" +
-			"\tmov QWORD[INTERNAL____READ_PTR+8], rbx//NO_DELETE\n" +
-			"\tmov r10, 0\n" +
-			"\tjmp .l5\n" +
-			".l4:\n" +
-			"\tmov r10, QWORD[INTERNAL____READ_PTR]\n" +
-			"\tmov rbx, QWORD[INTERNAL____READ_PTR+8]\n" +
-			".l5:\n" +
-			"\tmov rax, 0\n" +
-			".l2:\n" +
-			"\tmovzx rcx, BYTE [INTERNAL____READ + r10]\n" +
-			"\tcmp rcx, 32\n" +
-			"\tje .l3\n" +
-			"\tcmp rcx, 10\n" +
-			"\tje .l3\n" +
-			"\tsub rcx, '0'\n" +
-			"\tINC r10\n" +
-			"\tmul DWORD [const10]\n" +
-			"\tadd rax, rcx\n" +
-			"\tCMP r10d, ebx\n" +
-			"\tJL .l2\n" +
-			".l3:\n" +
-			"\tadd r10, 1\n" +
-			"\tmov QWORD[INTERNAL____READ_PTR], r10//NO_DELETE\n" +
-			"\tret\n" +
-			"\n";
+	private static final String functions_code = "extern print_char\n" +
+			"extern printNumber\n" +
+			"extern printNewLine\n" +
+			"extern readValue\n" +
+			"extern readChar\n";
 	private static final List<VAR_> vars = new ArrayList<>();
 	private static final List<VAR_> dataVars = new ArrayList<>();
 	private static int tg = 1;
@@ -684,15 +622,15 @@ public class _LANG_COMPILER {
 			if (p.exitValue() != 0) {
 				InputStream inr = p.getErrorStream();
 				String msg = new String(inr.readAllBytes());
-				System.err.println(msg);
+				System.err.println("NASM:\n" + msg);
 				System.exit(p.exitValue());
 			}
-			p = Runtime.getRuntime().exec(new String[]{"ld", "-o", target_binary_file, "pseudo.o"});
+			p = Runtime.getRuntime().exec(new String[]{"ld", "-o", target_binary_file, "pseudo.o", "-L./lib", "-lstd"});
 			p.waitFor();
 			if (p.exitValue() != 0) {
 				InputStream inr = p.getErrorStream();
 				String msg = new String(inr.readAllBytes());
-				System.err.println(msg);
+				System.err.println("LD:\n" + msg);
 				System.exit(p.exitValue());
 			}
 			p = Runtime.getRuntime().exec(new String[]{"rm", "pseudo.o"});
@@ -700,7 +638,7 @@ public class _LANG_COMPILER {
 			if (p.exitValue() != 0) {
 				InputStream inr = p.getErrorStream();
 				String msg = new String(inr.readAllBytes());
-				System.err.println(msg);
+				System.err.println("RM:\n" + msg);
 				System.exit(p.exitValue());
 			}
 		} catch (IOException | InterruptedException e) {
@@ -1205,8 +1143,10 @@ public class _LANG_COMPILER {
 			else if (t[j] instanceof NewLineToken)
 				break;
 		}
-		if (j == i)
+		if (j == i) {
+			ind.ind = j + 1;
 			return null;
+		}
 		Token[][] tokens = new Token[args][];
 		int ptr = i;
 		for (int k = 0; k < args; k++) {
