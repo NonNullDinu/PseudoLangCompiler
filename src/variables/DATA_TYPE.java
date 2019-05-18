@@ -23,7 +23,6 @@ public enum DATA_TYPE {
 	STRING("^[Ss]tring$", "resb", "BYTE", "BYTE", 8),
 	BOOL("^bool(ean)?$", "resb", "BYTE", "BYTE", 1),
 	SHORT_INT("^short(\\sint)?$", "resw", "WORD", "WORD", 2),
-	POINTER("^(.|\\s)+\\*+$", "resq", "QWORD", "QWORD", 8),
 	BYTE_STREAM("[^.]*", "resb", "BYTE", "BYTE", 8);
 	public String wrdtype;
 	public String asm_type;

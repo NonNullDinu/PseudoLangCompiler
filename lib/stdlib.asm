@@ -1,9 +1,24 @@
+; SYSCALL numbers
+
+SYS_EXIT   equ 1
+SYS_READ   equ 3
+SYS_WRITE  equ 4
+SYS_OPEN   equ 5
+SYS_CLOSE  equ 6
+SYS_CREATE equ 8
+
+; STANDARD STREAMS
+STDIN      equ 0
+STDOUT     equ 1
+STDERR     equ 2
+
+
 section .text
 global print_char
 print_char:
 	push rax
 	mov ecx, eax
-	mov eax, 4
+	mov eax, SYS_WRITE
 	mov ebx, r8d
 	mov edx, 1
 	int 0x80
@@ -26,8 +41,8 @@ printNumber:
 	ret
 global printNewLine
 printNewLine:
-	mov eax, 4
-	mov ebx, 1
+	mov eax, SYS_WRITE
+	mov ebx, STDOUT
 	mov ecx, new_line
 	mov edx, 1
 	int 0x80
@@ -38,13 +53,16 @@ readValue:
 	mov r12, QWORD [INTERNAL____READ_PTR+8]
 	cmp r11, r12
 	jl .l4
-	mov eax, 3
-	mov ebx, 0
+	mov eax, SYS_READ
+	mov ebx, r8d
 	mov ecx, INTERNAL____READ
 	mov edx, 65536
 	int 0x80
 	mov ebx, eax
+	cmp r8, STDIN
+	jne .l11
 	sub ebx, 1
+.l11:
 	mov QWORD [INTERNAL____READ_PTR+8], rbx
 	mov r10, 0
 	jmp .l5
@@ -75,13 +93,16 @@ readChar:
 	mov r12, QWORD [INTERNAL____READ_PTR+8]
 	cmp r11, r12
 	jl .l6
-	mov eax, 3
-	mov ebx, 0
+	mov eax, SYS_READ
+	mov ebx, r8d
 	mov ecx, INTERNAL____READ
 	mov edx, 1
 	int 0x80
 	mov ebx, eax
+	cmp r8, STDIN
+	jne .l12
 	sub ebx, 1
+.l12:
 	mov QWORD [INTERNAL____READ_PTR+8], rbx
 	mov r10, 0
 	jmp .l7
@@ -93,6 +114,70 @@ readChar:
 	mov QWORD [INTERNAL____READ_PTR], r10
 	ret
 
+global f_ro_open
+f_ro_open:
+    ; File_ReadOnly_OPEN
+    mov rcx, 0
+    mov rdx, rbx
+    mov rbx, rax
+    mov rax, SYS_OPEN
+    int 0x80
+    cmp rax, 0
+    jl .l8
+    ; file exists
+    ret
+.l8:
+    ; file does not exist
+    call exit
+    ret
+
+global f_wo_open
+f_wo_open:
+    ; File_WriteOnly_OPEN
+    mov rcx, 1
+    mov rdx, rbx
+    mov rbx, rax
+    mov rax, SYS_OPEN
+    int 0x80
+    cmp rax, 0
+    jl .l9
+    ; file exists
+    ret
+.l9:
+    ; file does not exist
+    mov rax, SYS_CREATE
+    mov rcx, rdx
+    int 0x80
+    cmp rax, 0
+    jg .l10
+    call exit
+.l10:
+    ret
+
+global f_close
+f_close:
+    mov rbx, rax
+    mov rax, SYS_CLOSE
+    int 0x80
+    ret
+
+global exit
+exit:
+    push rax
+    mov rax, SYS_WRITE
+    mov rbx, STDOUT
+    mov rcx, ___end
+    mov rdx, ___end_len
+    int 0x80
+    pop rax
+    call printNumber
+    push rax
+    call printNewLine
+    mov rax, SYS_EXIT
+    pop rbx
+    int 0x80
+    ret
+
 section .bss
 	INTERNAL____READ RESB 65536
 	INTERNAL____CACHE RESQ 65536
@@ -102,3 +187,5 @@ section .rodata
 	const10 dd 10
 	digits db 48,49,50,51,52,53,54,55,56,57
 	new_line DB 10
+	___end DB "Process finished with exit code "
+	___end_len equ $-___end

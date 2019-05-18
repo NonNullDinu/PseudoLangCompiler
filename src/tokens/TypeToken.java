@@ -36,6 +36,8 @@ public class TypeToken extends Token {
 			case "int":
 			case "intreg":
 				return DATA_TYPE.LONG;
+			case "file_stream":
+				return DATA_TYPE.SHORT_INT;
 			default:
 				return null;
 		}

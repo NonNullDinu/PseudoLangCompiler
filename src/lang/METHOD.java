@@ -25,9 +25,9 @@ import java.util.Arrays;
 public enum METHOD {
 	EXIT((m, argTokens) -> {
 		if (argTokens != null && argTokens.length == 1) {
-			return _LANG_COMPILER.valueInstructions(argTokens[0]) + "\tmov eax, 4\n\tmov ebx, 1\n\tmov ecx, ___end\n\tmov edx, ___end_len\n\tint 0x80\n\tmov rax, r10\n\tcall printNumber\n\tcall printNewLine\n\tmov eax, 1\n\tmov ebx, r10d\n\tint 0x80\n";
+			return _LANG_COMPILER.valueInstructions(argTokens[0]) + "\tmov rax, r10\n\tcall exit\n";
 		} else
-			return "\tmov eax, 4\n\tmov ebx, 1\n\tmov ecx, ___end\n\tmov edx, ___end_len\n\tint 0x80\n\tlea rax, [digits]\n\tcall print_char\n\tcall printNewLine\n\tmov eax, 1\n\tmov ebx, r10d\n\tint 0x80\n";
+			return "\tmov rax, 0\n\tcall exit\n";
 	}),
 
 	WRITE_TO((m, argTokens) -> {
@@ -99,14 +99,20 @@ public enum METHOD {
 		return asm.toString();
 	}),
 	READ((m, argTokens) -> {
-		StringBuilder methodBody = new StringBuilder();
-		for (Token[] tk :
-				argTokens) {
-			_LANG_COMPILER.rec_ind = 0;
-			methodBody.append("\n\tcall readValue\n");
-			methodBody.append("\tmov [" + ((IdentifierToken) tk[0]).identifier + "], rax//POINTER\n");
+		StringBuilder asm = new StringBuilder();
+		for (int i = 0; i < argTokens.length; i++) {
+			Token[] tk = argTokens[i];
+			if (i == 0 && tk[0] instanceof FILE_TOKEN) {
+				asm.append("\tmovzx r8, WORD [").append(((IdentifierToken) tk[1]).identifier).append("]\n");
+			} else {
+				if (i == 0)
+					asm.append("\tmov r8, 0\n");
+				_LANG_COMPILER.rec_ind = 0;
+				asm.append("\tcall readValue\n");
+				asm.append("\tmov QWORD [").append(((IdentifierToken) tk[0]).identifier).append("], rax//POINTER\n");
+			}
 		}
-		return methodBody.toString();
+		return asm.toString();
 	}),
 	WRITE((m, argTokens) -> {
 		StringBuilder asm = new StringBuilder();
@@ -124,7 +130,33 @@ public enum METHOD {
 			}
 		}
 		return asm.toString();
-	});
+	}),
+	OPEN(((m, argTokens) -> {
+		String asm = "";
+		if (argTokens[0][0] instanceof FILE_TOKEN) {
+			//argTokens[0][1] = name of variable
+			//argTokens[1][0] = name of file
+			//argTokens[2][0] = file access
+			//argTokens[3][0] = file permissions
+			IdentifierToken name = ((IdentifierToken) argTokens[0][1]);
+			String file = ((StringToken) argTokens[1][0]).str;
+			FILE_ACCESS_TOKEN access = ((FILE_ACCESS_TOKEN) argTokens[2][0]);
+			int perm = ((NumberToken) argTokens[3][0]).v;
+			_LANG_COMPILER.addNewVar("file_" + ++_LANG_COMPILER.fileCode + "_path", file + ", 0");
+			asm = "\tmov rax, file_" + _LANG_COMPILER.fileCode + "_path\n" +
+					"\tmov rbx, 0q" + perm + "\n" +
+					"\tcall " + access.access.func_open() + "\n" +
+					"\tmov WORD [" + name.identifier + "], ax\n";
+		}
+		return asm;
+	})),
+	CLOSE(((m, argTokens) -> {
+		if (argTokens[0][0] instanceof FILE_TOKEN) {
+			return "\tmovzx rax, WORD [" + ((IdentifierToken) argTokens[0][1]).identifier + "]\n" +
+					"\tcall f_close\n";
+		}
+		return "";
+	}));
 	private CALLBACK callback;
 
 	METHOD(CALLBACK callback) {

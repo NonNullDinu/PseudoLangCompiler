@@ -52,7 +52,7 @@ public enum Statement_TYPE {
 				ret = t[ind] instanceof IdentifierToken;
 				break;
 			case FOR_LOOP:
-				ret = t[ind] instanceof ForToken;
+				ret = t[ind] instanceof ForToken && t[ind + 1] instanceof IdentifierToken && t[ind + 2] instanceof AssignmentToken;
 				break;
 		}
 		return ret;
