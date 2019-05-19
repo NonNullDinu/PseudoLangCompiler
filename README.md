@@ -12,7 +12,7 @@ IMPORTANT: A program **ALWAYS** finishes execution with an exit instruction.
 If it does not then it is automatically appended and the compiler assumes the exit code is 0.
 Note: in the syntax that follows:
 - \[x] means x is optional
-- <x> means x is mandatory
+- &lt;x> means x is mandatory
 - Parts that are not enclosed mean that they must be left just as they are
 - This is case sensitive and so the token <code>if</code> will be treated differently than <code>iF</code>
 ### Calling functions
@@ -65,4 +65,49 @@ end
 Step has a default value of <code>1</code>.
 
 # Standard library
-//TODO: COMPLETE
+
+## Exit
+Finishes execution with the code of the first argument
+Syntax:
+<pre>exit [arg1]</pre>
+arg1 defaults to 0 when not present.
+
+## Writing to the console
+Syntax:
+<pre>write &lt;arg1>[,arg2[,arg3[,...]]]</pre>
+Writes to the console the values of the arguments in order
+
+## Reading from the console
+Syntax:
+<pre>read &lt;identifier1>[,identifier2[,...]]</pre>
+Reads from the console and puts the values in the variables with those identifiers
+
+## Working with files
+### Open a file
+Syntax:
+<pre>open file &lt;file_descriptor>, &lt;file_name>, &lt;file_access>, &lt;file_permissions></pre>
+The file descriptor is a variable of type file_stream which can be read from or written to.
+
+The file name is the name of the file that should be opened.
+
+The file access is one of the following:
+- read only(short "ro") for files that should only be read from.
+- write only(short "wo") for files that should only be written to.
+
+The file permissions is a base-8 number (from 3 digits):
+4 for read, 2 for write and 1 for execute. Do an or operation on these digits for to get the desired value for the permission.
+
+More on file permissions:[Wikipedia](https://en.wikipedia.org/wiki/File_system_permissions)
+
+### Close a file
+Syntax:
+<pre>close file &lt;file_descriptor></pre>
+The file descriptor is the file_stream that was opened.
+
+### Writing to a file
+Syntax is the same as writing to the console, but the first parameter is <code>file &lt;file_descriptor></code>:
+<pre>write file &lt;file_descriptor>, &lt;arg1>[,arg2[,arg3[,...]]]</pre>
+
+### Reading from a file
+Same as writing to a file, the first parameter is <code>file &lt;file_descriptor></code>
+<pre>read file &lt;file_descriptor>, &lt;identifier1>[,identifier2[,...]]</pre>
