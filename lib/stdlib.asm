@@ -1,67 +1,107 @@
 ; SYSCALL numbers
 
-SYS_EXIT   equ 1
-SYS_READ   equ 3
-SYS_WRITE  equ 4
-SYS_OPEN   equ 5
-SYS_CLOSE  equ 6
-SYS_CREATE equ 8
+SYS_READ   equ 0
+SYS_WRITE  equ 1
+SYS_OPEN   equ 2
+SYS_CLOSE  equ 3
+SYS_EXIT   equ 60
+SYS_CREATE equ 85
 
 ; STANDARD STREAMS
 STDIN      equ 0
 STDOUT     equ 1
 STDERR     equ 2
 
-
 section .text
+global init
+init:
+    mov QWORD [INTERNAL____READ_PTR], 0
+    mov QWORD [INTERNAL____READ_PTR+8], 0
+    ret
+
+global exception
+exception:
+    neg rax
+    push rax
+    mov eax, SYS_WRITE
+    mov rdi, STDERR
+    mov rsi, ___exc
+    mov rdx, ___exc_len
+    syscall
+
+    mov rax, QWORD [rsp]
+    mov r8, STDERR
+    call printNumber
+    call printNewLine
+
+    pop rax
+    call exit
+    ret
+
 global print_char
 print_char:
-	push rax
-	mov ecx, eax
-	mov eax, SYS_WRITE
-	mov ebx, r8d
-	mov edx, 1
-	int 0x80
-	pop rax
+	mov rsi, rax
+	mov rax, SYS_WRITE
+	mov rdi, r8
+	mov rdx, 1
+	push r8
+	syscall
+	pop r8
+	or rax, rax
+	jns .l16
+	call exception
+.l16:
+	mov rax, rsi
 	ret
+
 global printNumber
 printNumber:
 	push rax
 	push rdx
 	xor edx, edx
-	div dword[const10]
+	idiv dword[const10]
 	test eax, eax
 	je .l1
 	call printNumber
 .l1:
-	lea eax, [digits+edx]
+	lea rax, [digits+rdx]
 	call print_char
 	pop rdx
 	pop rax
 	ret
+
 global printNewLine
 printNewLine:
-	mov eax, SYS_WRITE
-	mov ebx, STDOUT
-	mov ecx, new_line
-	mov edx, 1
-	int 0x80
+	mov rax, SYS_WRITE
+	mov rdi, r8
+	mov rsi, new_line
+	mov rdx, 1
+	syscall
+	or rax, rax
+	jns .l15
+	call exception
+.l15:
 	ret
+
 global readValue
 readValue:
 	mov r11, QWORD [INTERNAL____READ_PTR]
 	mov r12, QWORD [INTERNAL____READ_PTR+8]
 	cmp r11, r12
 	jl .l4
-	mov eax, SYS_READ
-	mov ebx, r8d
-	mov ecx, INTERNAL____READ
-	mov edx, 65536
-	int 0x80
-	mov ebx, eax
+	mov rax, SYS_READ
+	mov rdi, r8
+	mov rsi, INTERNAL____READ
+	mov rdx, 65536
+	syscall
+	or rax, rax
+	jns .l14
+	call exception
+.l14:
+	mov rbx, rax
 	cmp r8, STDIN
 	jne .l11
-	sub ebx, 1
+	sub rbx, 1
 .l11:
 	mov QWORD [INTERNAL____READ_PTR+8], rbx
 	mov r10, 0
@@ -77,31 +117,46 @@ readValue:
 	je .l3
 	cmp rcx, 10
 	je .l3
-	sub rcx, '0'
+	cmp r10, [INTERNAL____READ_PTR + 8]
+	jge .l3
+	sub rcx, '0'; 0x30
 	inc r10
 	mul DWORD [const10]
 	add rax, rcx
 	cmp r10d, ebx
 	jl .l2
 .l3:
-	add r10, 1
+	inc r10
+	cmp r10, [INTERNAL____READ_PTR + 8]
+	jge .l13
+	movzx rcx, BYTE [INTERNAL____READ + r10]
+	cmp rcx, 10
+	je .l3
+	cmp rcx, 32
+	je .l3
+.l13:
 	mov QWORD [INTERNAL____READ_PTR], r10
 	ret
+
 global readChar
 readChar:
 	mov r11, QWORD [INTERNAL____READ_PTR]
 	mov r12, QWORD [INTERNAL____READ_PTR+8]
 	cmp r11, r12
 	jl .l6
-	mov eax, SYS_READ
-	mov ebx, r8d
-	mov ecx, INTERNAL____READ
-	mov edx, 1
-	int 0x80
-	mov ebx, eax
+	mov rax, SYS_READ
+	mov rdi, r8
+	mov rsi, INTERNAL____READ
+	mov rdx, 1
+	syscall
+	or rax, rax
+	jns .l17
+	call exception
+.l17:
+	mov rbx, rax
 	cmp r8, STDIN
 	jne .l12
-	sub ebx, 1
+	sub rbx, 1
 .l12:
 	mov QWORD [INTERNAL____READ_PTR+8], rbx
 	mov r10, 0
@@ -110,72 +165,70 @@ readChar:
 	mov r10, r11
 .l7:
 	mov rax, QWORD [INTERNAL____READ + r10]
-	add r10, 1
+	inc r10
 	mov QWORD [INTERNAL____READ_PTR], r10
 	ret
 
 global f_ro_open
 f_ro_open:
     ; File_ReadOnly_OPEN
-    mov rcx, 0
+    mov rsi, 0
     mov rdx, rbx
-    mov rbx, rax
+    mov rdi, rax
     mov rax, SYS_OPEN
-    int 0x80
+    syscall
     cmp rax, 0
     jl .l8
     ; file exists
     ret
 .l8:
     ; file does not exist
-    call exit
+    call exception
     ret
 
 global f_wo_open
 f_wo_open:
     ; File_WriteOnly_OPEN
-    mov rcx, 1
+    mov rsi, 0101o
     mov rdx, rbx
-    mov rbx, rax
+    mov rdi, rax
     mov rax, SYS_OPEN
-    int 0x80
+    syscall
     cmp rax, 0
     jl .l9
-    ; file exists
+    ; file could be opened
     ret
 .l9:
-    ; file does not exist
-    mov rax, SYS_CREATE
-    mov rcx, rdx
-    int 0x80
-    cmp rax, 0
-    jg .l10
-    call exit
-.l10:
+    ; file could not be opened
+    call exception
     ret
 
 global f_close
 f_close:
-    mov rbx, rax
+    mov rdi, rax
     mov rax, SYS_CLOSE
-    int 0x80
+    syscall
+	or rax, rax
+	jns .l18
+	call exception
+.l18:
     ret
 
 global exit
 exit:
     push rax
+    mov r8, STDOUT
     mov rax, SYS_WRITE
-    mov rbx, STDOUT
-    mov rcx, ___end
+    mov rdi, STDOUT
+    mov rsi, ___end
     mov rdx, ___end_len
-    int 0x80
-    pop rax
+    syscall
+    mov rax, QWORD [rsp]
     call printNumber
-    push rax
     call printNewLine
     mov rax, SYS_EXIT
-    pop rbx
-    int 0x80
+    pop rdi
+    syscall
     ret
 
 section .bss
@@ -187,5 +240,7 @@ section .rodata
 	const10 dd 10
 	digits db 48,49,50,51,52,53,54,55,56,57
 	new_line DB 10
-	___end DB "Process finished with exit code "
+	___end DB "Process finished with exit code ", 0
 	___end_len equ $-___end
+	___exc DB "An exception occurred: ", 0
+	___exc_len equ $-___exc

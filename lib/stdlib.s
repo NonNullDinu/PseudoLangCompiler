@@ -51,7 +51,7 @@ printNumber:
 .globl printNewLine
 printNewLine:
 	movl $SYS_WRITE, %eax
-	movl $STDOUT, %ebx
+	movl %r8d, %ebx
 	leal new_line, %ecx
 	movl $1, %edx
 	int $0x80
@@ -184,6 +184,7 @@ exit:
     movq ___end_len, %rdx
     int $0x80
     popq %rax
+    movq $1, %r8
     call printNumber
     pushq %rax
     call printNewLine
@@ -198,13 +199,12 @@ exit:
 	.lcomm INTERNAL____READ_PTR, 16
 
 .section .data
-	const10:
-	    .int 10
 	digits:
 	    .byte 48,49,50,51,52,53,54,55,56,57
 	new_line:
 	    .byte 10
 	___end:
 	    .ascii "Process finished with exit code "
+	    .byte 0
 	___end_len:
-	    .int 36
+	    .int 32

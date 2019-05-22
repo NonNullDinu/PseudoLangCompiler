@@ -1,16 +1,19 @@
 begin
     int a
     file_stream fl
+    file_stream out
     int i
-    open file fl, "pseudo.in", read only, 744
-    i <- 1
-    while (i <= 9)
-    do begin
+    int n
+    open file fl, "pseudo.in", read only
+    open file out, "pseudo.out", write only, 744
+    read file fl, n
+    write n, "\n"
+    for i <- 1, n do
+    begin
         read file fl, a
-        write a
-        write "\n"
-        i <- i + 2
+        write file out, a, "\n"
     end
     close file fl
+    close file out
 end
 exit

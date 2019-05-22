@@ -128,27 +128,27 @@ public class OperatorToken extends Token {
 					break;
 				case LOGIC_E:
 					++LOGIC_TAG;
-					asm = "cmp " + a + ", " + b + "\n\tjne .LOGIC_" + (LOGIC_TAG) + "_FALSE\n\tmov " + a + ", 1\n\tJMP .LOGIC_" + LOGIC_TAG + "_END\n.LOGIC_" + (LOGIC_TAG) + "_FALSE:\n\tmov " + a + ", 0\n.LOGIC_" + LOGIC_TAG + "_END:\n";
+					asm = "cmp " + a + ", " + b + "\n\tmov " + a + ", 0\njne .LOGIC_" + (LOGIC_TAG) + "\n\tmov " + a + ", 1\n.LOGIC_" + LOGIC_TAG + ":\n";
 					break;
 				case LOGIC_NE:
 					++LOGIC_TAG;
-					asm = "cmp " + a + ", " + b + "\n\tje .LOGIC_" + (LOGIC_TAG) + "_FALSE\n\tmov " + a + ", 1\n\tJMP .LOGIC_" + LOGIC_TAG + "_END\n.LOGIC_" + (LOGIC_TAG) + "_FALSE:\n\tmov " + a + ", 0\n.LOGIC_" + LOGIC_TAG + "_END:\n";
+					asm = "cmp " + a + ", " + b + "\n\tmov " + a + ", 0\nje .LOGIC_" + (LOGIC_TAG) + "\n\tmov " + a + ", 1\n.LOGIC_" + LOGIC_TAG + ":\n";
 					break;
 				case LOGIC_S:
 					++LOGIC_TAG;
-					asm = "cmp " + a + ", " + b + "\n\tjge .LOGIC_" + (LOGIC_TAG) + "_FALSE\n\tmov " + a + ", 1\n\tJMP .LOGIC_" + LOGIC_TAG + "_END\n.LOGIC_" + (LOGIC_TAG) + "_FALSE:\n\tmov " + a + ", 0\n.LOGIC_" + LOGIC_TAG + "_END:\n";
+					asm = "cmp " + a + ", " + b + "\n\tmov " + a + ", 0\njge .LOGIC_" + (LOGIC_TAG) + "\n\tmov " + a + ", 1\n.LOGIC_" + LOGIC_TAG + ":\n";
 					break;
 				case LOGIC_SE:
 					++LOGIC_TAG;
-					asm = "cmp " + a + ", " + b + "\n\tjg .LOGIC_" + (LOGIC_TAG) + "_FALSE\n\tmov " + a + ", 1\n\tJMP .LOGIC_" + LOGIC_TAG + "_END\n.LOGIC_" + (LOGIC_TAG) + "_FALSE:\n\tmov " + a + ", 0\n.LOGIC_" + LOGIC_TAG + "_END:\n";
+					asm = "cmp " + a + ", " + b + "\n\tmov " + a + ", 0\njg .LOGIC_" + (LOGIC_TAG) + "\n\tmov " + a + ", 1\n.LOGIC_" + LOGIC_TAG + ":\n";
 					break;
 				case LOGIC_G:
 					++LOGIC_TAG;
-					asm = "cmp " + a + ", " + b + "\n\tjle .LOGIC_" + (LOGIC_TAG) + "_FALSE\n\tmov " + a + ", 1\n\tJMP .LOGIC_" + LOGIC_TAG + "_END\n.LOGIC_" + (LOGIC_TAG) + "_FALSE:\n\tmov " + a + ", 0\n.LOGIC_" + LOGIC_TAG + "_END:\n";
+					asm = "cmp " + a + ", " + b + "\n\tmov " + a + ", 0\njle .LOGIC_" + (LOGIC_TAG) + "\n\tmov " + a + ", 1\n.LOGIC_" + LOGIC_TAG + ":\n";
 					break;
 				case LOGIC_GE:
 					++LOGIC_TAG;
-					asm = "cmp " + a + ", " + b + "\n\tjl .LOGIC_" + (LOGIC_TAG) + "_FALSE\n\tmov " + a + ", 1\n\tJMP .LOGIC_" + LOGIC_TAG + "_END\n.LOGIC_" + (LOGIC_TAG) + "_FALSE:\n\tmov " + a + ", 0\n.LOGIC_" + LOGIC_TAG + "_END:\n";
+					asm = "cmp " + a + ", " + b + "\n\tmov " + a + ", 0\njl .LOGIC_" + (LOGIC_TAG) + "\n\tmov " + a + ", 1\n.LOGIC_" + LOGIC_TAG + ":\n";
 					break;
 				case LOGIC_AND:
 					asm = "and " + a + ", " + b + "\n\tand " + a + ", 1\n";

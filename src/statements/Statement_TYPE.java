@@ -26,7 +26,8 @@ public enum Statement_TYPE {
 	WHILE_LOOP,
 	INCREMENT,
 	FOR_LOOP,
-	METHOD_CALL;
+	METHOD_CALL,
+	DO_WHILE;
 
 	public boolean fits(Token[] t, int ind) {
 		boolean ret = false;
@@ -53,6 +54,9 @@ public enum Statement_TYPE {
 				break;
 			case FOR_LOOP:
 				ret = t[ind] instanceof ForToken && t[ind + 1] instanceof IdentifierToken && t[ind + 2] instanceof AssignmentToken;
+				break;
+			case DO_WHILE:
+				ret = t[ind] instanceof RepeatToken;
 				break;
 		}
 		return ret;
