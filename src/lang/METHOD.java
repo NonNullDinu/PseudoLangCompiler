@@ -25,71 +25,73 @@ import java.util.Arrays;
 public enum METHOD {
 	EXIT((m, argTokens) -> {
 		if (argTokens != null && argTokens.length > 0) {
-			return _LANG_COMPILER.valueInstructions(argTokens[0]) + "\tmov rax, r10\n\tcall exit\n";
+			return _LANG_COMPILER.valueInstructions(argTokens[0]) + "\tmov %r10, %rax\n\tcall exit\n";
 		} else
-			return "\tmov rax, 0\n\tcall exit\n";
+			return "\tmovq $0, %rax\n\tcall exit\n";
 	}),
 
-	WRITE_TO((m, argTokens) -> {
-		String asm = "NULL\n";
-		if (argTokens != null && argTokens.length == 2) {
-			String name = ((StringToken) argTokens[0][0]).str;
-			((PayloadToken) argTokens[1][0]).bind();
-			Payload pl = ((PayloadToken) argTokens[1][0]).payload;
-			_LANG_COMPILER.addNewVar("file_" + ++_LANG_COMPILER.fileCode + "_path", name + ", 0");
-			_LANG_COMPILER.addNewRESWVar("file_" + _LANG_COMPILER.fileCode + "_desc");
-			_LANG_COMPILER.addNewVar("file_" + _LANG_COMPILER.fileCode + "_content", pl.payload);
-			asm = "\tmov eax, 8\n\tmov ebx, file_" + _LANG_COMPILER.fileCode + "_path\n\tmov ecx, 0q644\n\tsyscall\n\tmov [file_" + _LANG_COMPILER.fileCode + "_desc], eax\n\tmov eax, 4\n\tmov ebx, [file_" + _LANG_COMPILER.fileCode + "_desc]\n\tmov ecx, file_" + _LANG_COMPILER.fileCode + "_content\n\tmov edx, " + pl.payload.length + "\n\tsyscall\n\tmov eax, 6\n\tmov ebx, [file_" + _LANG_COMPILER.fileCode + "_desc]\n\tsyscall\n";
-		}
-		return asm;
-	}),
+//	WRITE_TO((m, argTokens) -> {
+//		String asm = "NULL\n";
+//		if (argTokens != null && argTokens.length == 2) {
+//			String name = ((StringToken) argTokens[0][0]).str;
+//			((PayloadToken) argTokens[1][0]).bind();
+//			Payload pl = ((PayloadToken) argTokens[1][0]).payload;
+//			_LANG_COMPILER.addNewVar("file_" + ++_LANG_COMPILER.fileCode + "_path", name + ", 0");
+//			_LANG_COMPILER.addNewRESWVar("file_" + _LANG_COMPILER.fileCode + "_desc");
+//			_LANG_COMPILER.addNewVar("file_" + _LANG_COMPILER.fileCode + "_content", pl.payload);
+//			asm = "\tmovq $8, %rax\n\tmov ebx, file_" + _LANG_COMPILER.fileCode + "_path\n\tmov ecx, 0q644\n\tsyscall\n\tmov [file_" + _LANG_COMPILER.fileCode + "_desc], eax\n\tmov eax, 4\n\tmov ebx, [file_" + _LANG_COMPILER.fileCode + "_desc]\n\tmov ecx, file_" + _LANG_COMPILER.fileCode + "_content\n\tmov edx, " + pl.payload.length + "\n\tsyscall\n\tmov eax, 6\n\tmov ebx, [file_" + _LANG_COMPILER.fileCode + "_desc]\n\tsyscall\n";
+//		}
+//		return asm;
+//	}),
 
-	DEBUG_PRINT((m, argTokens) -> {
-		if (argTokens.length == 1 && argTokens[0].length == 1) {
-			if (argTokens[0][0] instanceof StringToken) {
-				_LANG_COMPILER.addNewVar("str_" + ++_LANG_COMPILER.strCode, ((StringToken) argTokens[0][0]).str + ", 10, 0");
-				return "\tmov eax, 4\n\tmov ebx, 1\n\tmov ecx, str_" + _LANG_COMPILER.strCode + "\n\tmov edx, " + (((StringToken) argTokens[0][0]).str.length()) + "\n\tsyscall\n";
-			} else if (argTokens[0][0] instanceof NumberToken) {
-				String val = Integer.toString(((NumberToken) argTokens[0][0]).v);
-				_LANG_COMPILER.addNewVar("str_" + ++_LANG_COMPILER.strCode, val);
-				return "\tmov eax, 4\n\tmov ebx, 1\n\tmov ecx, str_" + _LANG_COMPILER.strCode + "\n\tmov edx, " + (val.length()) + "\n\tsyscall\n\tcall printNewLine\n";
-			} else if (argTokens[0][0] instanceof IdentifierToken) {
-				return "\tmov r8, 1\n" + _LANG_COMPILER.printIdentifier(argTokens[0][0]);
-			}
-		}
-		return "";
-	}),
+//	DEBUG_PRINT((m, argTokens) -> {
+//		if (argTokens.length == 1 && argTokens[0].length == 1) {
+//			if (argTokens[0][0] instanceof StringToken) {
+//				_LANG_COMPILER.addNewVar("str_" + ++_LANG_COMPILER.strCode, ((StringToken) argTokens[0][0]).str + ", 10, 0");
+//				return "\tmov eax, 4\n\tmov ebx, 1\n\tmov ecx, str_" + _LANG_COMPILER.strCode + "\n\tmov edx, " + (((StringToken) argTokens[0][0]).str.length()) + "\n\tsyscall\n";
+//			} else if (argTokens[0][0] instanceof NumberToken) {
+//				String val = Integer.toString(((NumberToken) argTokens[0][0]).v);
+//				_LANG_COMPILER.addNewVar("str_" + ++_LANG_COMPILER.strCode, val);
+//				return "\tmov eax, 4\n\tmov ebx, 1\n\tmov ecx, str_" + _LANG_COMPILER.strCode + "\n\tmov edx, " + (val.length()) + "\n\tsyscall\n\tcall printNewLine\n";
+//			} else if (argTokens[0][0] instanceof IdentifierToken) {
+//				return "\tmov r8, 1\n" + _LANG_COMPILER.printIdentifier(argTokens[0][0]);
+//			}
+//		}
+//		return "";
+//	}),
 
-	ERROR((m, argTokens) -> {
-		if (argTokens.length == 1 && argTokens[0].length == 1) {
-			if (argTokens[0][0] instanceof StringToken) {
-				_LANG_COMPILER.addNewVar("str_" + ++_LANG_COMPILER.strCode, ((StringToken) argTokens[0][0]).str + ", 10, 0");
-				return "\tmov eax, 4\n\tmov ebx, 2\n\tmov ecx, str_" + _LANG_COMPILER.strCode + "\n\tmov edx, " + (((StringToken) argTokens[0][0]).str.length()) + "\n\tsyscall\n";
-			} else if (argTokens[0][0] instanceof NumberToken) {
-				String val = Integer.toString(((NumberToken) argTokens[0][0]).v);
-				_LANG_COMPILER.addNewVar("str_" + ++_LANG_COMPILER.strCode, val);
-				return "\tmov eax, 4\n\tmov ebx, 2\n\tmov ecx, str_" + _LANG_COMPILER.strCode + "\n\tmov edx, " + (val.length()) + "\n\tsyscall\n\tcall printNewLine\n";
-			} else if (argTokens[0][0] instanceof IdentifierToken) {
-				return "\tmov r8, 2\n" + _LANG_COMPILER.printIdentifier(argTokens[0][0]);
-			}
-		}
-		return "";
-	}),
+//	ERROR((m, argTokens) -> {
+//		if (argTokens.length == 1 && argTokens[0].length == 1) {
+//			if (argTokens[0][0] instanceof StringToken) {
+//				_LANG_COMPILER.addNewVar("str_" + ++_LANG_COMPILER.strCode, ((StringToken) argTokens[0][0]).str + ", 10, 0");
+//				return "\tmov eax, 4\n\tmov ebx, 2\n\tmov ecx, str_" + _LANG_COMPILER.strCode + "\n\tmov edx, " + (((StringToken) argTokens[0][0]).str.length()) + "\n\tsyscall\n";
+//			} else if (argTokens[0][0] instanceof NumberToken) {
+//				String val = Integer.toString(((NumberToken) argTokens[0][0]).v);
+//				_LANG_COMPILER.addNewVar("str_" + ++_LANG_COMPILER.strCode, val);
+//				return "\tmov eax, 4\n\tmov ebx, 2\n\tmov ecx, str_" + _LANG_COMPILER.strCode + "\n\tmov edx, " + (val.length()) + "\n\tsyscall\n\tcall printNewLine\n";
+//			} else if (argTokens[0][0] instanceof IdentifierToken) {
+//				return "\tmov r8, 2\n" + _LANG_COMPILER.printIdentifier(argTokens[0][0]);
+//			}
+//		}
+//		return "";
+//	}),
+
 	DEFINED_METHOD((m, argTokens) -> {
 		StringBuilder methodBody = new StringBuilder();
 		if (argTokens != null && argTokens.length != 0)
 			for (int i = argTokens.length - 1; i >= 0; i--) {
 				_LANG_COMPILER.rec_ind = 0;
-				methodBody.append(_LANG_COMPILER.valueInstructions(argTokens[i])).append("\tpush r10\n");
+				methodBody.append(_LANG_COMPILER.valueInstructions(argTokens[i])).append("\tpushq %r10\n");
 			}
 		methodBody.append("\tcall ").append(m.name).append("\n");
 		if (argTokens != null && argTokens.length != 0)
-			methodBody.append("\tpop r10\n".repeat(argTokens.length));
+			methodBody.append("\tpopq %r10\n".repeat(argTokens.length));
 		return methodBody.toString();
 	}),
+
 	PRINT_DIGIT((m, argTokens) -> {
 		_LANG_COMPILER.rec_ind = 0;
-		return _LANG_COMPILER.valueInstructions(argTokens[0]) + "\tlea eax, [digits + r10]\n\tcall print_char\n";
+		return _LANG_COMPILER.valueInstructions(argTokens[0]) + "\tleaq digits(,%r10,1), %rax\n\tcall print_char\n";
 	}),
 	ASM((m, argTokens) -> {
 		StringBuilder asm = new StringBuilder();
@@ -101,13 +103,13 @@ public enum METHOD {
 		for (int i = 0; i < argTokens.length; i++) {
 			Token[] tk = argTokens[i];
 			if (i == 0 && tk[0] instanceof FILE_TOKEN) {
-				asm.append("\tmovzx r8, WORD [var_").append(_LANG_COMPILER.var_indices.get(((IdentifierToken) tk[1]).identifier)).append("]\n");
+				asm.append("\tmovzxw var_").append(_LANG_COMPILER.var_indices.get(((IdentifierToken) tk[1]).identifier)).append(", %r8\n");
 			} else {
 				if (i == 0)
-					asm.append("\tmov r8, 0\n");
+					asm.append("\tmovq $0, %r8\n");
 				_LANG_COMPILER.rec_ind = 0;
 				asm.append("\tcall readValue\n");
-				asm.append("\tmov QWORD [var_").append(_LANG_COMPILER.var_indices.get(((IdentifierToken) tk[0]).identifier)).append("], rax//POINTER\n");
+				asm.append("\tmovq %rax, var_").append(_LANG_COMPILER.var_indices.get(((IdentifierToken) tk[0]).identifier)).append("//POINTER\n");
 			}
 		}
 		return asm.toString();
@@ -119,20 +121,20 @@ public enum METHOD {
 			Token[] a = argTokens[i];
 			if (i == 0) {
 				if (a[0] instanceof FILE_TOKEN) {
-					asm.append("\tmovzx r8, WORD [var_").append(_LANG_COMPILER.var_indices.get(((IdentifierToken) a[1]).identifier)).append("]\n");
+					asm.append("\tmovzxw var_").append(_LANG_COMPILER.var_indices.get(((IdentifierToken) a[1]).identifier)).append(", %r8\n");
 					continue;
-				} else asm.append("\tmov r8, 1\n");
+				} else asm.append("\tmov $1, %r8\n");
 			}
 			if (a[0] instanceof StringToken) {
 				if (!((StringToken) a[0]).str.equals("\"\\n\"")) {
-					_LANG_COMPILER.addNewVar("str_" + ++_LANG_COMPILER.strCode, ((StringToken) a[0]).str + ", 0");
+					_LANG_COMPILER.addNewVar("str_" + ++_LANG_COMPILER.strCode, ".ascii " + ((StringToken) a[0]).str + "\n.zero 1");
 					asm.append("\tmov eax, 4\n\tmov ebx, r8d\n\tmov ecx, str_").append(_LANG_COMPILER.strCode).append("\n\tmov edx, ").append(((StringToken) a[0]).str.length() - 2).append("\n\tsyscall\n");
 				} else
 					asm.append("\tcall printNewLine\n");
 			} else {
 				_LANG_COMPILER.rec_ind = 0;
 				System.out.println(Arrays.deepToString(a));
-				asm.append(_LANG_COMPILER.valueInstructions(a)).append("\tmov rax, r10\n\tcall printNumber\n");
+				asm.append(_LANG_COMPILER.valueInstructions(a)).append("\tmov %r10, %rax\n\tcall printNumber\n");
 			}
 		}
 		return asm.toString();
@@ -147,24 +149,24 @@ public enum METHOD {
 			IdentifierToken name = ((IdentifierToken) argTokens[0][1]);
 			String file = ((StringToken) argTokens[1][0]).str;
 			FILE_ACCESS_TOKEN access = ((FILE_ACCESS_TOKEN) argTokens[2][0]);
-			_LANG_COMPILER.addNewVar("file_" + ++_LANG_COMPILER.fileCode + "_path", file + ", 0");
+			_LANG_COMPILER.addNewVar("file_" + ++_LANG_COMPILER.fileCode + "_path", ".ascii " + file + "\n.zero 1");
 			if (access.access.equals(FILE_ACCESS.WRITE_ONLY)) {
 				int perm = ((NumberToken) argTokens[3][0]).v;
-				asm = "\tmov rax, file_" + _LANG_COMPILER.fileCode + "_path\n" +
-						"\tmov rbx, 0q" + perm + "\n" +
+				asm = "\tmovq $file_" + _LANG_COMPILER.fileCode + "_path, %rax\n" +
+						"\tmovq $0" + perm + ", %rbx\n" +
 						"\tcall " + access.access.func_open() + "\n" +
-						"\tmov WORD [var_" + _LANG_COMPILER.var_indices.get(name.identifier) + "], ax\n";
+						"\tmovw %ax, var_" + _LANG_COMPILER.var_indices.get(name.identifier) + "\n";
 			} else {
-				asm = "\tmov rax, file_" + _LANG_COMPILER.fileCode + "_path\n" +
+				asm = "\tmovq $file_" + _LANG_COMPILER.fileCode + "_path, %rax\n" +
 						"\tcall " + access.access.func_open() + "\n" +
-						"\tmov WORD [var_" + _LANG_COMPILER.var_indices.get(name.identifier) + "], ax\n";
+						"\tmovw %ax, var_" + _LANG_COMPILER.var_indices.get(name.identifier) + "\n";
 			}
 		}
 		return asm;
 	})),
 	CLOSE(((m, argTokens) -> {
 		if (argTokens[0][0] instanceof FILE_TOKEN) {
-			return "\tmovzx rax, WORD [var_" + _LANG_COMPILER.var_indices.get(((IdentifierToken) argTokens[0][1]).identifier) + "]\n" +
+			return "\tmovzxw var_" + _LANG_COMPILER.var_indices.get(((IdentifierToken) argTokens[0][1]).identifier) + ", %rax\n" +
 					"\tcall f_close\n";
 		}
 		return "";

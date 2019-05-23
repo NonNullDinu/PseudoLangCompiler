@@ -18,23 +18,25 @@
 package variables;
 
 public enum DATA_TYPE {
-	LONG("^long(\\sint)?$", "resq", "QWORD", "QWORD", 8),
-	INT("^int$", "resd", "DWORD", "DWORD", 4),
-	STRING("^[Ss]tring$", "resb", "BYTE", "BYTE", 8),
-	BOOL("^bool(ean)?$", "resb", "BYTE", "BYTE", 1),
-	SHORT_INT("^short(\\sint)?$", "resw", "WORD", "WORD", 2),
-	BYTE_STREAM("[^.]*", "resb", "BYTE", "BYTE", 8);
+	LONG("^long(\\sint)?$", "resq", "QWORD", "QWORD", 8, "q"),
+	INT("^int$", "resd", "DWORD", "DWORD", 4, "l"),
+	STRING("^[Ss]tring$", "resb", "BYTE", "BYTE", 8, "q"),
+	BOOL("^bool(ean)?$", "resb", "BYTE", "BYTE", 1, "b"),
+	SHORT_INT("^short(\\sint)?$", "resw", "WORD", "WORD", 2, "w"),
+	BYTE_STREAM("[^.]*", "resb", "BYTE", "BYTE", 8, "q");
 	public String wrdtype;
 	public String asm_type;
 	public String pattern;
 	public String pushkeyword;
 	public int bytesize;
+	public String instrsuffix;
 
-	DATA_TYPE(String regex, String asm_type, String wrdtype, String pushkeyword, int bytesize) {
+	DATA_TYPE(String regex, String asm_type, String wrdtype, String pushkeyword, int bytesize, String instrsuffix) {
 		this.pattern = regex;
 		this.asm_type = asm_type;
 		this.wrdtype = wrdtype;
 		this.pushkeyword = pushkeyword;
 		this.bytesize = bytesize;
+		this.instrsuffix = instrsuffix;
 	}
 }

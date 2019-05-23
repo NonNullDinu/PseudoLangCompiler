@@ -99,71 +99,71 @@ public class OperatorToken extends Token {
 			switch (this) {
 				case ADD:
 					if (_LANG_COMPILER.isConstant(b))
-						asm = "add " + a + ", " + _LANG_COMPILER.cvalue(b) + "\n";
-					else asm = "add " + a + ", " + b + "\n";
+						asm = "add $" + _LANG_COMPILER.cvalue(b) + ", " + a + "\n";
+					else asm = "add " + b + ", " + a + "\n";
 					break;
 				case SUBTRACT:
 					if (_LANG_COMPILER.isConstant(b))
-						asm = "sub " + a + ", " + _LANG_COMPILER.cvalue(b) + "\n";
-					else asm = "sub " + a + ", " + b + "\n";
+						asm = "sub $" + _LANG_COMPILER.cvalue(b) + ", " + a + "\n";
+					else asm = "sub " + b + ", " + a + "\n";
 					break;
 				case DIVIDE: {
 					if (bvalue && pow2)
-						asm = "shr " + a + ", " + log_int + "\n";
+						asm = "shr $" + log_int + ", " + a + "\n";
 					else
-						asm = "mov eax, " + _LANG_COMPILER.reg(a).addressing.x32.name + "\n\tmov edx, 0\n\tdiv " + _LANG_COMPILER.reg(b).addressing.x32.name + "\n\tmov " + _LANG_COMPILER.reg(a).addressing.x32.name + ", eax\n";
+						asm = "movl %" + _LANG_COMPILER.reg(a).addressing.x32.name + ", %eax\n\tmovl $0, %edx\n\tdiv %" + _LANG_COMPILER.reg(b).addressing.x32.name + "\n\tmovl %eax, %" + _LANG_COMPILER.reg(a).addressing.x32.name + "\n";
 					break;
 				}
 				case MULTIPLY:
 					if (bvalue && pow2)
-						asm = "shl " + a + ", " + log_int + "\n";
+						asm = "shl $" + log_int + ", " + a + "\n";
 					else
-						asm = "mov edx, 0\n\tmov eax, " + _LANG_COMPILER.reg(a).addressing.x32.name + "\n\tmul " + _LANG_COMPILER.reg(b).addressing.x32.name + "\n\tmov " + _LANG_COMPILER.reg(a).addressing.x32.name + ", edx\n\tshl " + _LANG_COMPILER.reg(a).addressing.x64.name + ", 32\n\tor " + _LANG_COMPILER.reg(a).addressing.x32.name + ", eax\n";
+						asm = "movl $0, %edx\n\tmovl %" + _LANG_COMPILER.reg(a).addressing.x32.name + ", %eax\n\tmul %" + _LANG_COMPILER.reg(b).addressing.x32.name + "\n\tmovl %edx, %" + _LANG_COMPILER.reg(a).addressing.x32.name + "\n\tshl $32, %" + _LANG_COMPILER.reg(a).addressing.x64.name + "\n\tor %eax, %" + _LANG_COMPILER.reg(a).addressing.x32.name + "\n";
 					break;
 				case MODULO:
 					if (bvalue && pow2)
-						asm = "and " + a + ", " + (bv - 1);
+						asm = "and $" + (bv - 1) + ", " + a;
 					else
-						asm = "mov eax, " + _LANG_COMPILER.reg(a).addressing.x32.name + "\n\tmov edx, 0\n\tdiv " + _LANG_COMPILER.reg(b).addressing.x32.name + "\n\tmov " + _LANG_COMPILER.reg(a).addressing.x32.name + ", edx\n";
+						asm = "movl %" + _LANG_COMPILER.reg(a).addressing.x32.name + ", %eax\n\tmovl $0, %edx\n\tdiv %" + _LANG_COMPILER.reg(b).addressing.x32.name + "\n\tmovl %edx, %" + _LANG_COMPILER.reg(a).addressing.x32.name + "\n";
 					break;
 				case LOGIC_E:
 					++LOGIC_TAG;
-					asm = "cmp " + a + ", " + b + "\n\tmov " + a + ", 0\njne .LOGIC_" + (LOGIC_TAG) + "\n\tmov " + a + ", 1\n.LOGIC_" + LOGIC_TAG + ":\n";
+					asm = "cmpq %" + b + ", %" + a + "\n\tmovq $0, %" + a + "\njne .LOGIC_" + (LOGIC_TAG) + "\n\tmovq $1, %" + a + "\n.LOGIC_" + LOGIC_TAG + ":\n";
 					break;
 				case LOGIC_NE:
 					++LOGIC_TAG;
-					asm = "cmp " + a + ", " + b + "\n\tmov " + a + ", 0\nje .LOGIC_" + (LOGIC_TAG) + "\n\tmov " + a + ", 1\n.LOGIC_" + LOGIC_TAG + ":\n";
+					asm = "cmpq %" + b + ", %" + a + "\n\tmovq $0, %" + a + "\nje .LOGIC_" + (LOGIC_TAG) + "\n\tmovq $1, %" + a + "\n.LOGIC_" + LOGIC_TAG + ":\n";
 					break;
 				case LOGIC_S:
 					++LOGIC_TAG;
-					asm = "cmp " + a + ", " + b + "\n\tmov " + a + ", 0\njge .LOGIC_" + (LOGIC_TAG) + "\n\tmov " + a + ", 1\n.LOGIC_" + LOGIC_TAG + ":\n";
+					asm = "cmpq %" + b + ", %" + a + "\n\tmovq $0, %" + a + "\njge .LOGIC_" + (LOGIC_TAG) + "\n\tmovq $1, %" + a + "\n.LOGIC_" + LOGIC_TAG + ":\n";
 					break;
 				case LOGIC_SE:
 					++LOGIC_TAG;
-					asm = "cmp " + a + ", " + b + "\n\tmov " + a + ", 0\njg .LOGIC_" + (LOGIC_TAG) + "\n\tmov " + a + ", 1\n.LOGIC_" + LOGIC_TAG + ":\n";
+					asm = "cmpq %" + b + ", %" + a + "\n\tmovq $0, %" + a + "\njg .LOGIC_" + (LOGIC_TAG) + "\n\tmovq $1, %" + a + "\n.LOGIC_" + LOGIC_TAG + ":\n";
 					break;
 				case LOGIC_G:
 					++LOGIC_TAG;
-					asm = "cmp " + a + ", " + b + "\n\tmov " + a + ", 0\njle .LOGIC_" + (LOGIC_TAG) + "\n\tmov " + a + ", 1\n.LOGIC_" + LOGIC_TAG + ":\n";
+					asm = "cmpq %" + b + ", %" + a + "\n\tmovq $0, %" + a + "\njle .LOGIC_" + (LOGIC_TAG) + "\n\tmovq $1, %" + a + "\n.LOGIC_" + LOGIC_TAG + ":\n";
 					break;
 				case LOGIC_GE:
 					++LOGIC_TAG;
-					asm = "cmp " + a + ", " + b + "\n\tmov " + a + ", 0\njl .LOGIC_" + (LOGIC_TAG) + "\n\tmov " + a + ", 1\n.LOGIC_" + LOGIC_TAG + ":\n";
+					asm = "cmpq %" + b + ", %" + a + "\n\tmovq $0, %" + a + "\njl .LOGIC_" + (LOGIC_TAG) + "\n\tmovq $1, %" + a + "\n.LOGIC_" + LOGIC_TAG + ":\n";
 					break;
 				case LOGIC_AND:
-					asm = "and " + a + ", " + b + "\n\tand " + a + ", 1\n";
+					asm = "and %" + a + ", %" + b + "\n\tand $1, %" + a + "\n";
 					break;
 				case LOGIC_OR:
-					asm = "or " + a + ", " + b + "\n\tand " + a + ", 1\n";
+					asm = "or %" + a + ", %" + b + "\n\tand $1, %" + a + "\n";
 					break;
 				case LOGIC_XOR:
-					asm = "xor " + a + ", " + b + "\n\tand " + a + ", 1\n";
+					asm = "xor %" + a + ", %" + b + "\n\tand $1, %" + a + "\n";
 					break;
 				case SHIFT_LEFT:
 					if (bvalue)
-						asm = "shl " + a + ", " + bv + "\n";
+						asm = "shl $" + bv + ", %" + a + "\n";
 					else
-						asm = "mov cl, " + _LANG_COMPILER.reg(b).addressing.x8.name + "\n\tshl " + a + ", cl\n";
+						asm = "movb %" + _LANG_COMPILER.reg(b).addressing.x8.name + ", %cl\n\tshl %cl, %" + a + "\n";
 					break;
 				case SHIFT_RIGHT:
 					if (bvalue)

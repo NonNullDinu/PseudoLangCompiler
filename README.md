@@ -5,7 +5,7 @@
 Pseudocode is a way of describing algorithms in a high-level language that
 computers didn't use to understand. Until now that is. This is an implementation
 that does just that. It understands **some** high level commands and 
-translates them into NASM assembly.
+translates them into GAS assembly.
 
 ## Program structure
 IMPORTANT: A program **ALWAYS** finishes execution with an exit instruction.

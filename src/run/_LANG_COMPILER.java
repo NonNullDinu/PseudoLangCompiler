@@ -36,16 +36,16 @@ import java.util.regex.Pattern;
 public class _LANG_COMPILER {
 	private static final int OPTMAX = 32;
 	public static int strCode = 0;
-	private static final String functions_code = "extern print_char\n" +
-			"extern printNumber\n" +
-			"extern printNewLine\n" +
-			"extern readValue\n" +
-			"extern readChar\n" +
-			"extern exit\n" +
-			"extern f_ro_open\n" +
-			"extern f_wo_open\n" +
-			"extern f_close\n" +
-			"extern init\n";
+	private static final String functions_code = ".extern print_char\n" +
+			".extern printNumber\n" +
+			".extern printNewLine\n" +
+			".extern readValue\n" +
+			".extern readChar\n" +
+			".extern exit\n" +
+			".extern f_ro_open\n" +
+			".extern f_wo_open\n" +
+			".extern f_close\n" +
+			".extern init\n";
 	private static final List<VAR_> vars = new ArrayList<>();
 	private static final List<VAR_> dataVars = new ArrayList<>();
 	private static int tg = 1;
@@ -57,7 +57,7 @@ public class _LANG_COMPILER {
 	private static StringBuilder assembly;
 	public static int fileCode = 0;
 	private static String asm_source_file;
-	private static final Pattern register = Pattern.compile("rax%eax%ax%al%rcx%ecx%cx%cl%rdx%edx%dx%dl%rbx%ebx%bx%bl%rsi%esi%si%sil%rdi%edi%di%dil%rsp%esp%sp%spl%rbp%ebp%bp%bpl%r8%r8d%r8w%r8b%r9%r9d%r9w%r9b%r10%r10d%r10w%r10b%r11%r11d%r11w%r11b%r12%r12d%r12w%r12b%r13%r13d%r13w%r13b%r14%r14d%r14w%r14b%r15%r15d%r15w%r15b".replaceAll("%", "|"));
+	private static final Pattern register = Pattern.compile("%rax|%eax|%ax|%al|%rcx|%ecx|%cx|%cl|%rdx|%edx|%dx|%dl|%rbx|%ebx|%bx|%bl|%rsi|%esi|%si|%sil|%rdi|%edi|%di|%dil|%rsp|%esp|%sp|%spl|%rbp|%ebp|%bp|%bpl|%r8|%r8d|%r8w|%r8b|%r9|%r9d|%r9w|%r9b|%r10|%r10d|%r10w|%r10b|%r11|%r11d|%r11w|%r11b|%r12|%r12d|%r12w|%r12b|%r13|%r13d|%r13w|%r13b|%r14|%r14d|%r14w|%r14b|%r15|%r15d|%r15w|%r15b");
 	private static int internal_cache_index = 0;
 	private static int cache_ptr = 0;
 	public static int rec_ind = 0;
@@ -198,13 +198,10 @@ public class _LANG_COMPILER {
 		registerList.add(new REGISTER_ADDRESSING_SET(reg("r14"), reg("r14d"), reg("r14w"), reg("r14b")));
 		registerList.add(new REGISTER_ADDRESSING_SET(reg("r15"), reg("r15d"), reg("r15w"), reg("r15b")));
 
-		//PREPARE FOR OPTIMIZATIONS
-		optimizationStrategies.add(new OptimizationStrategy("(BYTE|WORD|DWORD|QWORD)\\[(.*)]", "$1 [$2]"));
-
-		optimizationStrategies.add(new OptimizationStrategy("mov (.*), (.*)" + nlr + "push \\1", "push $2"));//REPLACE MOV a,b PUSH a with PUSH b
-		optimizationStrategies.add(new OptimizationStrategy("mov (.*), (.*)" + nlr + "mov \\2, \\1", "mov $1, $2"));//REPLACE MOV a,b MOV b,a with MOV a,b
-		optimizationStrategies.add(new OptimizationStrategy("mov r10, (.*)" + nlr + "mov r11, (.*)" + nlr + "cmp r10, r11", "mov r10, $1" + nl + "cmp r10, $2"));
-		optimizationStrategies.add(new OptimizationStrategy("mov r10, (BYTE|WORD|DWORD|QWORD) \\[(.*)]" + nlr + "(add|sub|shl|shr) r10, (\\d+)" + nlr + "mov \\1 \\[\\2], r10", "$3 $1 [$2], $4" + nl + "mov r10, $1 [$2]"));
+		optimizationStrategies.add(new OptimizationStrategy("mov(b|w|l|q) (.*), (.*)" + nlr + "push\\1 \\3", "push$1 $2"));//REPLACE MOV a,b PUSH a with PUSH b
+		optimizationStrategies.add(new OptimizationStrategy("mov(b|w|l|q) (.*), (.*)" + nlr + "mov\\1 \\3, \\2", "mov$1 $3, $2"));//REPLACE MOV a,b MOV b,a with MOV a,b
+		optimizationStrategies.add(new OptimizationStrategy("movq (.*), %r10" + nlr + "movq (.*), %r11" + nlr + "cmp %r11, %r10", "movq %r10, $1" + nl + "cmp $2, %r10"));
+		optimizationStrategies.add(new OptimizationStrategy("movq (.*), %r10" + nlr + "(add|sub|shl|shr)q $(\\d+), %r10" + nlr + "mov \\1, r10", "$2 \\$$3, $1" + nl + "movq %r10, $1"));
 	}
 
 	public static REGISTER reg(String name) {
@@ -235,7 +232,7 @@ public class _LANG_COMPILER {
 	}
 
 	private static void makeAssembly() {
-		assembly = new StringBuilder(";DO NOT EDIT\n;THIS FILE IS COMPUTER GENERATED\n;AS A RESULT OF THE COMPILATION OF \"" + program_file_name + "\"\nsection .text\n" + functions_code + "\n\tglobal _start\n_start:\n\tcall init\n");
+		assembly = new StringBuilder("#DO NOT EDIT\n#THIS FILE IS COMPUTER GENERATED\n#AS A RESULT OF THE COMPILATION OF \"" + program_file_name + "\"\n.section .text\n" + functions_code + "\n\t.globl _start\n_start:\n\tcall init\n");
 		boolean prevdec = true;
 		for (Statement statement : statements) {
 			switch (statement.type) {
@@ -259,34 +256,34 @@ public class _LANG_COMPILER {
 				case VAR_UPDATE:
 					rec_ind = 0;
 					assembly.append(valueInstructions(((VarUpdate_Statement) statement).value));
-					assembly.append("\tmov QWORD [").append(((VarUpdate_Statement) statement).name).append("], r10\n");
+					assembly.append("\tmovq %r10, ").append(((VarUpdate_Statement) statement).name).append("\n");
 					break;
 				case WHILE_LOOP: {
 					int a = tg++;
-					jumpTrueLabel = ".WHILE_" + a;
-					jumpFalseLabel = ".WHILE_" + a + "_END";
-					assembly.append(".WHILE_").append(a).append(":\n");
+					jumpTrueLabel = "WHILE_" + a;
+					jumpFalseLabel = "WHILE_" + a + "_END";
+					assembly.append("WHILE_").append(a).append(":\n");
 					assembly.append(conditional(((WhileLoop) statement).conditionTokens));
-					assembly.append("\tCMP r10, 0\n\tJE .WHILE_").append(a).append("_END\n");
+					assembly.append("\tCMPQ $0, %r10\n\tJE .WHILE_").append(a).append("_END\n");
 					assembly.append(assemblyInstructions(new Statements(((WhileLoop) statement).statements.statements), new HashMap<>()));
-					assembly.append("\tJMP .WHILE_").append(a).append("\n");
-					assembly.append(".WHILE_").append(a).append("_END:\n");
+					assembly.append("\tJMP WHILE_").append(a).append("\n");
+					assembly.append("WHILE_").append(a).append("_END:\n");
 					prevdec = false;
 					break;
 				}
 				case FOR_LOOP: {
 					int a = tg++;
-					jumpTrueLabel = ".WHILE_" + a;
-					jumpFalseLabel = ".WHILE_" + a + "_END";
-					assembly.append(valueInstructions(((ForLoop) statement).forboundtokens[0])).append("\tmov ").append(((ForLoop) statement).var.data_type.wrdtype).append("[var_").append(var_indices.get(((ForLoop) statement).var.identifier)).append("], r10\n");
-					assembly.append(".WHILE_").append(a).append(":\n");
+					jumpTrueLabel = "WHILE_" + a;
+					jumpFalseLabel = "WHILE_" + a + "_END";
+					assembly.append(valueInstructions(((ForLoop) statement).forboundtokens[0])).append("\tmovq %r10, var_").append(var_indices.get(((ForLoop) statement).var.identifier)).append("\n");
+					assembly.append("WHILE_").append(a).append(":\n");
 					assembly.append(forConditional(((ForLoop) statement).var, ((ForLoop) statement).forboundtokens[1]));
-					assembly.append("\tCMP r10, 0\n\tJE .WHILE_").append(a).append("_END\n");
+					assembly.append("\tCMPQ $0, %r10\n\tJE WHILE_").append(a).append("_END\n");
 					assembly.append(assemblyInstructions(new Statements(((ForLoop) statement).repeat.statements), new HashMap<>()));
 					assembly.append(valueInstructions(((ForLoop) statement).forboundtokens[2]));
-					assembly.append("\tadd ").append(((ForLoop) statement).var.data_type.wrdtype).append("[var_").append(var_indices.get(((ForLoop) statement).var.identifier)).append("], r10\n");
-					assembly.append("\tJMP .WHILE_").append(a).append("\n");
-					assembly.append(".WHILE_").append(a).append("_END:\n");
+					assembly.append("\taddq %r10, var_").append(var_indices.get(((ForLoop) statement).var.identifier)).append("\n");
+					assembly.append("\tJMP WHILE_").append(a).append("\n");
+					assembly.append("WHILE_").append(a).append("_END:\n");
 					prevdec = false;
 					break;
 				}
@@ -302,7 +299,7 @@ public class _LANG_COMPILER {
 							throw new ParsingError("Variable \"" + ((Increment_Statement) statement).name + "\" does not exist");
 						((Increment_Statement) statement).dt = trg;
 					}
-					assembly.append("\tINC ").append(((Increment_Statement) statement).dt.wrdtype).append("[").append(((Increment_Statement) statement).name).append("]\n");
+					assembly.append("\tINC").append(((Increment_Statement) statement).dt.instrsuffix).append(" ").append(((Increment_Statement) statement).name).append("\n");
 					prevdec = false;
 					break;
 				}
@@ -313,39 +310,39 @@ public class _LANG_COMPILER {
 					cond_code++;
 					int cnd = cond_code;
 					if (((Conditional) statement).onFalse != null) {
-						jumpFalseLabel = ".COND_" + cnd + "_FALSE";
-					} else jumpFalseLabel = ".COND_" + cnd + "_FINAL_END";
-					jumpTrueLabel = ".COND_" + cnd + "_TRUE";
-					assembly.append(conditional(((Conditional) statement).condition)).append("\nCMP r10, 0\n\tJE .COND_").append(cond_code).append(((Conditional) statement).onFalse != null ? "_FALSE" : "_FINAL_END").append("\n");
-					assembly.append(";.COND_").append(cnd).append("_TRUE:\n").append(assemblyInstructions(((Conditional) statement).onTrue, new HashMap<>()));
+						jumpFalseLabel = "COND_" + cnd + "_FALSE";
+					} else jumpFalseLabel = "COND_" + cnd + "_FINAL_END";
+					jumpTrueLabel = "COND_" + cnd + "_TRUE";
+					assembly.append(conditional(((Conditional) statement).condition)).append("\nCMPQ $0, %r10\n\tJE COND_").append(cond_code).append(((Conditional) statement).onFalse != null ? "_FALSE" : "_FINAL_END").append("\n");
+					assembly.append("#COND_").append(cnd).append("_TRUE:\n").append(assemblyInstructions(((Conditional) statement).onTrue, new HashMap<>()));
 					if (((Conditional) statement).onFalse != null) {
-						assembly.append("\n\tJMP .COND_").append(cnd).append("_FINAL_END\n").append(".COND_").append(cnd).append("_FALSE:\n").append(assemblyInstructions(((Conditional) statement).onFalse, new HashMap<>()));
+						assembly.append("\n\tJMP COND_").append(cnd).append("_FINAL_END\n").append("COND_").append(cnd).append("_FALSE:\n").append(assemblyInstructions(((Conditional) statement).onFalse, new HashMap<>()));
 					}
-					assembly.append(".COND_").append(cnd).append("_FINAL_END:\n");
+					assembly.append("COND_").append(cnd).append("_FINAL_END:\n");
 					prevdec = false;
 					break;
 				case DO_WHILE: {
 					int a = tg++;
-					jumpTrueLabel = ".WHILE_" + a;
-					jumpFalseLabel = ".WHILE_" + a + "_END";
-					assembly.append(".WHILE_").append(a).append(":\n");
+					jumpTrueLabel = "WHILE_" + a;
+					jumpFalseLabel = "WHILE_" + a + "_END";
+					assembly.append("WHILE_").append(a).append(":\n");
 					assembly.append(assemblyInstructions(new Statements(((DoWhile) statement).repeat.statements), new HashMap<>()));
 					assembly.append(conditional(((DoWhile) statement).condtokens));
-					assembly.append("\tCMP r10, 0\n\tJNE .WHILE_").append(a).append("\n");
+					assembly.append("\tCMPQ $0, %r10\n\tJNE WHILE_").append(a).append("\n");
 					prevdec = false;
 					break;
 				}
 			}
 			rec_ind = 0;
 		}
-		StringBuilder asm_vars = new StringBuilder("section .bss\n\tINTERNAL____CACHE RESQ 65536\n");
+		StringBuilder asm_vars = new StringBuilder(".section .bss\n\t.lcomm INTERNAL____CACHE, 524288\n");
 		for (VAR_ var : vars) {
-			asm_vars.append("\tvar_").append(var_indices.get(var.name)).append(" ").append(var.type.asm_type).append(" 1\n");
+			asm_vars.append("\t.lcomm var_").append(var_indices.get(var.name)).append("\t, ").append(var.type.bytesize).append("\n");
 		}
 		assembly = new StringBuilder(asm_vars + "\n\n" + assembly.toString());
-		asm_vars = new StringBuilder("\n\nsection .rodata\n");
+		asm_vars = new StringBuilder("\n\n.section .rodata\n");
 		for (VAR_ var : dataVars) {
-			asm_vars.append("\t").append(var.name).append(" DB ").append(var.value).append("\n");
+			asm_vars.append("\t").append(var.name).append(":\n\t\t").append(var.value).append("\n");
 		}
 		assembly.append(asm_vars);
 		assembly = new StringBuilder(assembly.toString().replaceAll("\\t", ""));
@@ -383,11 +380,6 @@ public class _LANG_COMPILER {
 					rec_ind = 0;
 					asm.append(valueInstructions(((VarUpdate_Statement) statement).value));
 					String name = ((VarUpdate_Statement) statement).name;
-					boolean ptr = false;
-					if (name.startsWith("*")) {
-						name = name.substring(1);
-						ptr = true;
-					}
 					if (((VarUpdate_Statement) statement).dt == null) {
 						DATA_TYPE trg = null;
 						for (VAR_ v : vars) {
@@ -402,37 +394,34 @@ public class _LANG_COMPILER {
 					}
 					if (localvars_.containsKey(name))
 						name = _LANG_COMPILER.localvars.get(name);
-					if (ptr) {
-						asm.append("\tmov r11, ").append(((VarUpdate_Statement) statement).dt.wrdtype).append(" [").append(name).append("]\n\tmov [r11], r10//POINTER\n");
-					} else
-						asm.append("\tmov ").append(((VarUpdate_Statement) statement).dt.wrdtype).append(" [").append(name).append("], r10\n");
+					asm.append("\tmov").append(((VarUpdate_Statement) statement).dt.instrsuffix).append(" %r10, ").append(name).append("\n");
 					break;
 				case WHILE_LOOP: {
 					int a = tg++;
-					jumpTrueLabel = ".WHILE_" + a;
-					jumpFalseLabel = ".WHILE_" + a + "_END";
-					asm.append(".WHILE_").append(a).append(":\n");
+					jumpTrueLabel = "WHILE_" + a;
+					jumpFalseLabel = "WHILE_" + a + "_END";
+					asm.append("WHILE_").append(a).append(":\n");
 					asm.append(conditional(((WhileLoop) statement).conditionTokens));
-					asm.append("\tCMP r10, 0\n\tJE .WHILE_").append(a).append("_END\n");
+					asm.append("\tCMPQ $0, %r10\n\tJE .WHILE_").append(a).append("_END\n");
 					asm.append(assemblyInstructions(new Statements(((WhileLoop) statement).statements.statements), new HashMap<>()));
 					asm.append("\tJMP .WHILE_").append(a).append("\n");
-					asm.append(".WHILE_").append(a).append("_END:\n");
+					asm.append("WHILE_").append(a).append("_END:\n");
 					prevdec = false;
 					break;
 				}
 				case FOR_LOOP: {
 					int a = tg++;
-					jumpTrueLabel = ".WHILE_" + a;
-					jumpFalseLabel = ".WHILE_" + a + "_END";
-					asm.append(valueInstructions(((ForLoop) statement).forboundtokens[0])).append("\tmov ").append(((ForLoop) statement).var.data_type.wrdtype).append("[var_").append(var_indices.get(((ForLoop) statement).var.identifier)).append("], r10\n");
-					asm.append(".WHILE_").append(a).append(":\n");
+					jumpTrueLabel = "WHILE_" + a;
+					jumpFalseLabel = "WHILE_" + a + "_END";
+					asm.append(valueInstructions(((ForLoop) statement).forboundtokens[0])).append("\tmovq %r10, var_").append(var_indices.get(((ForLoop) statement).var.identifier)).append("\n");
+					asm.append("WHILE_").append(a).append(":\n");
 					asm.append(forConditional(((ForLoop) statement).var, ((ForLoop) statement).forboundtokens[1]));
-					asm.append("\tCMP r10, 0\n\tJE .WHILE_").append(a).append("_END\n");
+					asm.append("\tCMPQ $0, %r10\n\tJE WHILE_").append(a).append("_END\n");
 					asm.append(assemblyInstructions(new Statements(((ForLoop) statement).repeat.statements), new HashMap<>()));
 					asm.append(valueInstructions(((ForLoop) statement).forboundtokens[2]));
-					asm.append("\tadd ").append(((ForLoop) statement).var.data_type.wrdtype).append("[var_").append(var_indices.get(((ForLoop) statement).var.identifier)).append("], r10\n");
-					asm.append("\tJMP .WHILE_").append(a).append("\n");
-					asm.append(".WHILE_").append(a).append("_END:\n");
+					asm.append("\taddq %r10, var_").append(var_indices.get(((ForLoop) statement).var.identifier)).append("\n");
+					asm.append("\tJMP WHILE_").append(a).append("\n");
+					asm.append("WHILE_").append(a).append("_END:\n");
 					prevdec = false;
 					break;
 				}
@@ -448,7 +437,7 @@ public class _LANG_COMPILER {
 							throw new ParsingError("Variable \"" + ((Increment_Statement) statement).name + "\" does not exist");
 						((Increment_Statement) statement).dt = trg;
 					}
-					asm.append("\tINC ").append(((Increment_Statement) statement).dt.wrdtype).append(" [").append(((Increment_Statement) statement).name).append("]\n");
+					asm.append("\tINC").append(((Increment_Statement) statement).dt.instrsuffix).append(" ").append(((Increment_Statement) statement).name).append("\n");
 					prevdec = false;
 					break;
 				}
@@ -459,26 +448,26 @@ public class _LANG_COMPILER {
 					cond_code++;
 					int cnd = cond_code;
 					if (((Conditional) statement).onFalse != null) {
-						jumpFalseLabel = ".COND_" + cnd + "_FALSE";
-					} else jumpFalseLabel = ".COND_" + cnd + "_FINAL_END";
-					jumpTrueLabel = ".COND_" + cnd + "_TRUE";
-					asm.append(conditional(((Conditional) statement).condition)).append("\nCMP r10, 0\n\tJE .COND_").append(cond_code).append(((Conditional) statement).onFalse != null ? "_FALSE" : "_FINAL_END").append("\n");
-					asm.append(";.COND_").append(cnd).append("_TRUE:\n").append(assemblyInstructions(((Conditional) statement).onTrue, localvars_));
+						jumpFalseLabel = "COND_" + cnd + "_FALSE";
+					} else jumpFalseLabel = "COND_" + cnd + "_FINAL_END";
+					jumpTrueLabel = "COND_" + cnd + "_TRUE";
+					asm.append(conditional(((Conditional) statement).condition)).append("\nCMPQ $0, %r10\n\tJE COND_").append(cond_code).append(((Conditional) statement).onFalse != null ? "_FALSE" : "_FINAL_END").append("\n");
+					asm.append("#COND_").append(cnd).append("_TRUE:\n").append(assemblyInstructions(((Conditional) statement).onTrue, localvars_));
 					if (((Conditional) statement).onFalse != null) {
-						asm.append("\n\tJMP .COND_").append(cnd).append("_FINAL_END\n").append(".COND_").append(cnd).append("_FALSE:\n").append(assemblyInstructions(((Conditional) statement).onFalse, localvars_));
+						asm.append("\n\tJMP COND_").append(cnd).append("_FINAL_END\n").append("COND_").append(cnd).append("_FALSE:\n").append(assemblyInstructions(((Conditional) statement).onFalse, localvars_));
 					}
-					asm.append(".COND_").append(cnd).append("_FINAL_END:\n");
+					asm.append("COND_").append(cnd).append("_FINAL_END:\n");
 					prevdec = false;
 					break;
 
 				case DO_WHILE: {
 					int a = tg++;
-					jumpTrueLabel = ".WHILE_" + a;
-					jumpFalseLabel = ".WHILE_" + a + "_END";
-					asm.append(".WHILE_").append(a).append(":\n");
+					jumpTrueLabel = "WHILE_" + a;
+					jumpFalseLabel = "WHILE_" + a + "_END";
+					asm.append("WHILE_").append(a).append(":\n");
 					asm.append(assemblyInstructions(new Statements(((DoWhile) statement).repeat.statements), new HashMap<>()));
 					asm.append(conditional(((DoWhile) statement).condtokens));
-					asm.append("\tCMP r10, 0\n\tJNE .WHILE_").append(a).append("\n");
+					asm.append("\tCMPQ $0, %r10\n\tJNE WHILE_").append(a).append("\n");
 					prevdec = false;
 					break;
 				}
@@ -506,13 +495,19 @@ public class _LANG_COMPILER {
 		for (int i = 0; i < valueTokens.length && constant; i++)
 			constant = !(valueTokens[i] instanceof IdentifierToken || valueTokens[i] instanceof INTERNAL____CACHE_TOKEN);
 		if (constant) {
-			return "mov " + (depth == 0 ? "r10" : "QWORD [INTERNAL____CACHE + " + (8 * (cache_ptr = internal_cache_index++)) + "]") + ", " + Objects.requireNonNull(evaluate(valueTokens)).vi + "\n";
+			if (depth == 0)
+				return "movq $" + Objects.requireNonNull(evaluate(valueTokens)).vi + ", %r10\n";
+			else
+				return "movq $" + Objects.requireNonNull(evaluate(valueTokens)).vi + ", INTERNAL____CACHE(," + (cache_ptr = internal_cache_index++) + ",8)\n";
 		}
 
 		if (valueTokens.length == 1) {
-			return "\tmov r10, " + value(valueTokens[0]) + "\n\tmov QWORD [INTERNAL____CACHE + " + (8 * (cache_ptr = internal_cache_index++)) + "], r10\n";
+			return "\tmovq " + value(valueTokens[0]) + ", %r10\n\tmovq %r10, INTERNAL____CACHE(," + (cache_ptr = internal_cache_index++) + ",8)\n";
 		} else if (valueTokens.length == 3) {
-			return "\tmov r10, " + value(valueTokens[0]) + "\n\tmov r11, " + value(valueTokens[2]) + "\n\t" + ((OperatorToken) valueTokens[1]).asm_code("r10", "r11") + "\n" + (depth == 0 ? "" : "\tmov QWORD [INTERNAL____CACHE + " + (8 * (cache_ptr = internal_cache_index++)) + "], r10\n");
+			String asm_ = "\tmovq " + value(valueTokens[0]) + ", %r10\n\tmovq " + value(valueTokens[2]) + ", %r11\n\t" + ((OperatorToken) valueTokens[1]).asm_code("r10", "r11") + "\n";
+			if (depth != 0)
+				asm_ += "\tmovq %r10, INTERNAL____CACHE(," + (cache_ptr = internal_cache_index++) + ",8)\n";
+			return asm_;
 		} else {
 			int i;
 			int cnt = 0;
@@ -568,17 +563,17 @@ public class _LANG_COMPILER {
 							a = 8 * cache_ptr;
 							if (depth == 0) {
 								if (((OperatorToken) valueTokens[i]).mop == OperatorToken.Math_Operator.LOGIC_AND) {
-									asm.append("\tCMP QWORD [INTERNAL____CACHE + ").append(a).append("], 0\n\tJE ").append(jumpFalseLabel).append("\n");
+									asm.append("\tCMPQ $0, INTERNAL____CACHE(,").append(a).append(",1)\n\tJE ").append(jumpFalseLabel).append("\n");
 								} else if (((OperatorToken) valueTokens[i]).mop == OperatorToken.Math_Operator.LOGIC_OR) {
-									asm.append("\tCMP QWORD [INTERNAL____CACHE + ").append(a).append("], 0\n\tJNE ").append(jumpTrueLabel).append("\n");
+									asm.append("\tCMPQ $0, INTERNAL____CACHE(,").append(a).append(",1)\n\tJNE ").append(jumpTrueLabel).append("\n");
 								}
 							}
 							asm.append(valueInstructions(tokens2));
-							asm.append("\tmov r10, QWORD [INTERNAL____CACHE + ").append(a).append("]\n");
-							asm.append("\tmov r11, QWORD [INTERNAL____CACHE + ").append(8 * cache_ptr).append("]\n");
+							asm.append("\tmovq INTERNAL____CACHE(,").append(a).append(",1), %r10\n");
+							asm.append("\tmovq INTERNAL____CACHE(,").append(cache_ptr).append(",8), %r11\n");
 							asm.append(((OperatorToken) valueTokens[i]).asm_code("r10", "r11"));
 							if (depth != 0)
-								asm.append("\n\tmov QWORD [INTERNAL____CACHE + ").append(8 * cache_ptr).append("], r10\n");
+								asm.append("\n\tmovq %r10, INTERNAL____CACHE(,").append(cache_ptr).append(",8)\n");
 							return asm.toString();
 					}
 			}
@@ -600,11 +595,11 @@ public class _LANG_COMPILER {
 							asm.append(valueInstructions(tokens1));
 							a = 8 * cache_ptr;
 							asm.append(valueInstructions(tokens2));
-							asm.append("\tmov r10, QWORD [INTERNAL____CACHE + ").append(a).append("]\n");
-							asm.append("\tmov r11, QWORD [INTERNAL____CACHE + ").append(8 * cache_ptr).append("]\n");
+							asm.append("\tmovq INTERNAL____CACHE(,").append(a).append(",1), %r10\n");
+							asm.append("\tmovq INTERNAL____CACHE(,").append(cache_ptr).append(",8), %r11\n");
 							asm.append(((OperatorToken) valueTokens[i]).asm_code("r10", "r11"));
 							if (depth != 0)
-								asm.append("\n\tmov QWORD [INTERNAL____CACHE + ").append(8 * cache_ptr).append("], r10\n");
+								asm.append("\n\tmovq %r10, INTERNAL____CACHE(,").append(cache_ptr).append(",8)\n");
 							return asm.toString();
 					}
 			}
@@ -621,11 +616,11 @@ public class _LANG_COMPILER {
 							asm.append(valueInstructions(tokens1));
 							a = 8 * cache_ptr;
 							asm.append(valueInstructions(tokens2));
-							asm.append("\tmov r10, QWORD [INTERNAL____CACHE + ").append(a).append("]\n");
-							asm.append("\tmov r11, QWORD [INTERNAL____CACHE + ").append(8 * cache_ptr).append("]\n");
+							asm.append("\tmovq INTERNAL____CACHE(,").append(a).append(",1), %r10\n");
+							asm.append("\tmovq INTERNAL____CACHE(,").append(cache_ptr).append(",8), %r11\n");
 							asm.append(((OperatorToken) valueTokens[i]).asm_code("r10", "r11"));
 							if (depth != 0)
-								asm.append("\n\tmov QWORD [INTERNAL____CACHE + ").append(8 * cache_ptr).append("], r10\n");
+								asm.append("\n\tmovq %r10, INTERNAL____CACHE(,").append(cache_ptr).append(",8)\n");
 							return asm.toString();
 					}
 			}
@@ -642,11 +637,11 @@ public class _LANG_COMPILER {
 							asm.append(valueInstructions(tokens1));
 							a = 8 * cache_ptr;
 							asm.append(valueInstructions(tokens2));
-							asm.append("\tmov r10, QWORD [INTERNAL____CACHE + ").append(a).append("]\n");
-							asm.append("\tmov r11, QWORD [INTERNAL____CACHE + ").append(8 * cache_ptr).append("]\n");
+							asm.append("\tmovq INTERNAL____CACHE(,").append(a).append(",1), %r10\n");
+							asm.append("\tmovq INTERNAL____CACHE(,").append(cache_ptr).append(",8), %r11\n");
 							asm.append(((OperatorToken) valueTokens[i]).asm_code("r10", "r11"));
 							if (depth != 0)
-								asm.append("\n\tmov QWORD [INTERNAL____CACHE + ").append(8 * cache_ptr).append("], r10\n");
+								asm.append("\n\tmovq %r10, INTERNAL____CACHE(,").append(cache_ptr).append(",8)\n");
 							return asm.toString();
 					}
 			}
@@ -666,11 +661,11 @@ public class _LANG_COMPILER {
 							asm.append(valueInstructions(tokens1));
 							a = 8 * cache_ptr;
 							asm.append(valueInstructions(tokens2));
-							asm.append("\tmov r10, QWORD [INTERNAL____CACHE + ").append(a).append("]\n");
-							asm.append("\tmov r11, QWORD [INTERNAL____CACHE + ").append(8 * cache_ptr).append("]\n");
+							asm.append("\tmovq INTERNAL____CACHE(,").append(a).append(",1), %r10\n");
+							asm.append("\tmovq INTERNAL____CACHE(,").append(cache_ptr).append(",8), %r11\n");
 							asm.append(((OperatorToken) valueTokens[i]).asm_code("r10", "r11"));
 							if (depth != 0)
-								asm.append("\n\tmov QWORD [INTERNAL____CACHE + ").append(8 * cache_ptr).append("], r10\n");
+								asm.append("\n\tmovq %r10, INTERNAL____CACHE(,").append(cache_ptr).append(",8)\n");
 							return asm.toString();
 					}
 			}
@@ -682,7 +677,7 @@ public class _LANG_COMPILER {
 					asm.append(valueInstructions(tokens2));
 					asm.append(((UnaryOperatorToken) valueTokens[i]).asm_code("r10"));
 					if (depth != 0)
-						asm.append("\n\tmov QWORD [INTERNAL____CACHE + ").append(8 * cache_ptr).append("], r10\n");
+						asm.append("\n\tmovq %r10, INTERNAL____CACHE(,").append(cache_ptr).append(",8), r10\n");
 					return asm.toString();
 				}
 			}
@@ -694,12 +689,12 @@ public class _LANG_COMPILER {
 		try (FileOutputStream fout = new FileOutputStream(asm_source_file)) {
 			fout.write(assembly.toString().getBytes());
 			fout.close();
-			Process p = Runtime.getRuntime().exec(new String[]{"nasm", "-f", "elf64", asm_source_file, "-o", "pseudo.o"});
+			Process p = Runtime.getRuntime().exec(new String[]{"as", asm_source_file, "-o", "pseudo.o"});
 			p.waitFor();
 			if (p.exitValue() != 0) {
 				InputStream inr = p.getErrorStream();
 				String msg = new String(inr.readAllBytes());
-				System.err.println("NASM:\n" + msg);
+				System.err.println("GAS:\n" + msg);
 				System.exit(p.exitValue());
 			}
 			p = Runtime.getRuntime().exec(new String[]{"ld", "-o", target_binary_file, "pseudo.o", "-L./lib", "-lstd"});
@@ -725,20 +720,20 @@ public class _LANG_COMPILER {
 
 	private static String value(Token token) {
 		if (token instanceof NumberToken)
-			return Integer.toString(((NumberToken) token).v);
+			return "$" + ((NumberToken) token).v;
 		else if (token instanceof IdentifierToken) {
 			IdentifierToken idf = ((IdentifierToken) token);
-			return idf.data_type.wrdtype + "[var_" + var_indices.get(idf.identifier) + "]";
+			return "var_" + var_indices.get(idf.identifier);
 		} else if (token instanceof INTERNAL____CACHE_TOKEN)
-			return "QWORD [INTERNAL____CACHE + " + (((INTERNAL____CACHE_TOKEN) token).qwordoffset * 8) + "]";
+			return "INTERNAL____CACHE(," + (((INTERNAL____CACHE_TOKEN) token).qwordoffset) + ",8)";
 		else if (token instanceof LogicConstantValueToken)
-			return ((LogicConstantValueToken) token).v ? "1" : "0";
+			return ((LogicConstantValueToken) token).v ? "$1" : "$0";
 		else return "";
 	}
 
 	public static void main(String[] args) {
 		program_file_name = "pseudo.psl";
-		asm_source_file = "pseudo.asm";
+		asm_source_file = "pseudo.s";
 		target_binary_file = "pseudo";
 		readProgram();
 		tokenizeProgram();
@@ -756,19 +751,19 @@ public class _LANG_COMPILER {
 			while (LINE.startsWith(" ") || LINE.startsWith("\t"))
 				LINE = LINE.substring(1);
 			if (isCode) {
-				if (LINE.startsWith("section ")) {
+				if (LINE.startsWith(".section ")) {
 					isCode = false;
 					optimized.append(LINE).append("\n");
 					continue;
 				}
 				if (!LINE.isEmpty())
 					OPERATIONS.add(operation(LINE));
-			} else if (!LINE.equals("section .text"))
+			} else if (!LINE.equals(".section .text"))
 				optimized.append(LINE).append("\n");
 			if (!isCode)
-				isCode = LINE.equals("section .text");
+				isCode = LINE.equals(".section .text");
 		}
-		optimized.append("section .text\n");
+		optimized.append(".section .text\n");
 		for (int i = 0; i < OPERATIONS.size(); i++) {
 			ASMOP asmop = OPERATIONS.get(i);
 			if (asmop.isLabel) {
@@ -779,40 +774,40 @@ public class _LANG_COMPILER {
 					memory_constant.replace(mem, false);
 				}
 			} else if (asmop.arg2 != null) {
-				OPERAND operand = asmop.arg2;
-				if (asmop.OP.matches("^mov(zx|sb)?$")) {
+				OPERAND operand = asmop.arg1;
+				if (asmop.OP.matches("^mov(zx|sb)?(.?)$")) {
 					operand.value_is_constant = isConstant(operand.value);
 					if (operand.value_is_constant) {
 						operand.value = cvalue(operand.value);
-						setConstant(asmop.arg1.value, true, Integer.parseInt(operand.value));
-					} else setConstant(asmop.arg1.value, false, 0);
-				} else if (asmop.OP.matches("^lea$")) {
-					setConstant(asmop.arg1.value, false, 0);
-					setConstant(asmop.arg2.value, false, 0); // ASSUME IT IS GOING TO BE MODIFIED
-				} else if (asmop.OP.matches("^(add|sub)$")) {
+						setConstant(asmop.arg2.value, true, Integer.parseInt(operand.value));
+					} else setConstant(asmop.arg2.value, false, 0);
+				} else if (asmop.OP.matches("^lea.?$")) {
+					setConstant(asmop.arg2.value, false, 0);
+					setConstant(asmop.arg1.value, false, 0); // ASSUME IT IS GOING TO BE MODIFIED
+				} else if (asmop.OP.matches("^(add|sub)(.?)$")) {
 					operand.value_is_constant = isConstant(operand.value);
 					if (operand.value_is_constant) {
-						operand.value = cvalue(asmop.arg2.value);
+						operand.value = cvalue(asmop.arg1.value);
 						int a = Integer.parseInt(operand.value);
-						boolean firstIsConstant = isConstant(asmop.arg1.value);
-						setConstant(asmop.arg1.value, firstIsConstant, firstIsConstant ? (Integer.parseInt(cvalue(asmop.arg1.value)) + (asmop.OP.equals("add") ? a : (-a))) : 0);
-					} else setConstant(asmop.arg1.value, false, 0);
-				} else if (asmop.OP.matches("^(or|xor|and|shl|shr)$")) {
+						boolean firstIsConstant = isConstant(asmop.arg2.value);
+						setConstant(asmop.arg2.value, firstIsConstant, firstIsConstant ? (Integer.parseInt(cvalue(asmop.arg2.value)) + (asmop.OP.equals("add") ? a : (-a))) : 0);
+					} else setConstant(asmop.arg2.value, false, 0);
+				} else if (asmop.OP.matches("^(or|xor|and|shl|shr)(.?)$")) {
 					operand.value_is_constant = isConstant(operand.value);
 					if (operand.value_is_constant) {
-						operand.value = cvalue(asmop.arg2.value);
+						operand.value = cvalue(asmop.arg1.value);
 					}
-					setConstant(asmop.arg1.value, false, 0);
-				} else if (asmop.OP.equals("cmp")) {
+					setConstant(asmop.arg2.value, false, 0);
+				} else if (asmop.OP.matches("cmp(.?)")) {
 					operand.value_is_constant = isConstant(operand.value);
 					if (operand.value_is_constant) {
-						operand.value = cvalue(asmop.arg2.value);
+						operand.value = cvalue(asmop.arg1.value);
 					}
 				}
 			} else { // 1 or 0 args
-				if (asmop.OP.equals("int") && asmop.arg1.value.equals("0x80")) {
+				if (asmop.OP.equals("int") && asmop.arg1.value.equals("$0x80") || asmop.OP.equals("syscall")) {
 					setConstant("rax", false, 0);
-				} else if (asmop.OP.matches("^(mul|div)$")) {
+				} else if (asmop.OP.matches("^(mul|div)(.?)$")) {
 					setConstant("rax", false, 0);
 					setConstant("rdx", false, 0);
 				} else if (asmop.OP.equals("call")) {
@@ -833,33 +828,34 @@ public class _LANG_COMPILER {
 					memory_required.replace(memloc, true);
 				continue;
 			}
-			if (op.OP.matches("^mov(zx|sb)?$")) {
-				if ((op.comment == null || !(op.comment.equals("POINTER") || op.comment.equals("NO_DELETE"))) && !isRequired(op.arg1.value)) {
+			if (op.OP.matches("^mov(zx|sb)?(.?)$")) {
+				if ((op.comment == null || !(op.comment.equals("POINTER") || op.comment.equals("NO_DELETE"))) && !isRequired(op.arg2.value)) {
+					OPERATIONS.remove(i);
+					op.print();
+					continue;
+				}
+				setrequired(op.arg2.value, false);
+				setrequired(op.arg1.value, true);
+			} else if (op.OP.startsWith("lea")) {
+				if ((op.comment == null || !(op.comment.equals("POINTER") || op.comment.equals("NO_DELETE"))) && !isRequired(op.arg2.value)) {
 					OPERATIONS.remove(i);
 					continue;
 				}
-				setrequired(op.arg1.value, false);
-				setrequired(op.arg2.value, true);
-			} else if (op.OP.equals("lea")) {
-				if ((op.comment == null || !(op.comment.equals("POINTER") || op.comment.equals("NO_DELETE"))) && !isRequired(op.arg1.value)) {
-					OPERATIONS.remove(i);
-					continue;
-				}
-				setrequired(op.arg1.value, false);
-				setrequired(op.arg2.value, true);
+				setrequired(op.arg2.value, false);
+				setrequired(op.arg1.value, true);
 			} else if ((op.OP.equals("int") && op.arg1.value.equals("0x80")) || op.OP.equals("syscall")) {
 				setrequiredreg("rax", true);
 				setrequiredreg("rbx", true);
 				setrequiredreg("rcx", true);
 				setrequiredreg("rdx", true);
-			} else if (op.OP.equals("div")) {
+			} else if (op.OP.startsWith("div")) {
 				setrequiredreg("rax", true);
 				setrequiredreg("rdx", true);
 				setrequired(op.arg1.value, true);
-			} else if (op.OP.equals("mul")) {
+			} else if (op.OP.startsWith("mul")) {
 				setrequiredreg("rax", true);
 				setrequired(op.arg1.value, true);
-			} else if (op.OP.equals("test")) {
+			} else if (op.OP.startsWith("test")) {
 				setrequiredreg(op.arg1.value, true);
 				setrequiredreg(op.arg2.value, true);
 			} else if (op.OP.equals("call")) {
@@ -882,14 +878,14 @@ public class _LANG_COMPILER {
 						setrequiredreg("rbx", true);
 						break;
 				}
-			} else if (op.OP.equals("push")) {
+			} else if (op.OP.startsWith("push")) {
 				setrequired(op.arg1.value, true);
-			} else if (op.OP.equals("pop")) {
+			} else if (op.OP.startsWith("pop")) {
 				setrequired(op.arg1.value, false);
-			} else if (op.OP.equals("cmp")) {
+			} else if (op.OP.startsWith("cmp")) {
 				setrequired(op.arg1.value, true);
 				setrequired(op.arg2.value, true);
-			} else if (op.OP.matches("^(add|sub|and|or|xor|shl|shr)$")) {
+			} else if (op.OP.matches("^(add|sub|and|or|xor|shl|shr)(.?)$")) {
 				setrequired(op.arg1.value, true);
 				setrequired(op.arg2.value, true);
 			}
@@ -901,13 +897,13 @@ public class _LANG_COMPILER {
 				ASMOP op2 = OPERATIONS.get(i - 2);
 				if (op.isLabel || op1.isLabel || op2.isLabel)
 					continue;
-				if (op.OP.equals("pop") && op1.OP.equals("push")) {
+				if (op.OP.startsWith("pop") && op1.OP.startsWith("push")) {
 					if (op.arg1.value.equals(op1.arg1.value)) {
 						OPERATIONS.remove(i);
 						OPERATIONS.remove(i - 1);
 					}
 				}
-				if (op.OP.equals("mov") && op1.OP.equals("mov") && op2.OP.equals("cmp")) {
+				if (op.OP.startsWith("mov") && op1.OP.startsWith("mov") && op2.OP.startsWith("cmp")) {
 					boolean rem_a = false, rem_b = false;
 					if (op.arg1.value.equals(op2.arg1.value)) {
 						op2.arg1.value = op.arg2.value;
@@ -941,7 +937,7 @@ public class _LANG_COMPILER {
 		{
 			StringBuilder asm = new StringBuilder();
 			for (String line : assembly.toString().split("\n")) {
-				if (!(line.startsWith("\t") || line.contains(":") || line.startsWith("section .")))
+				if (!(line.startsWith("\t") || line.contains(":") || line.startsWith(".section .")))
 					asm.append("\t").append(line).append("\n");
 				else if (!line.matches("^\\s*$")) asm.append(line).append("\n");
 			}
@@ -959,29 +955,27 @@ public class _LANG_COMPILER {
 
 	private static boolean isRequired(String name) {
 		if (register.matcher(name).matches()) {
-			return register_required.get(name);
-		} else if (name.matches("^.*\\[.*].*$")) {
-			String n = name.substring(name.indexOf('[') + 1, name.indexOf(']'));
-			return (memory_required.containsKey(n) && memory_required.get(n));
+			return register_required.get(name.substring(1));
+		} else if (name.matches("^var_\\d+$") || name.matches("^INTERNAL____CACHE\\(,\\d+,\\d+\\)$")) {
+			return (memory_required.containsKey(name) && memory_required.get(name));
 		}
 		return false;
 	}
 
 	private static void setrequired(String name, boolean required) {
 		if (register.matcher(name).matches()) {
-			setrequiredreg(name, required);
-		} else if (name.matches("^.*\\[.*].*$")) {
-			String n = name.substring(name.indexOf('[') + 1, name.indexOf(']'));
+			setrequiredreg(name.substring(1), required);
+		} else if (name.matches("^.*$")) {
 			for (String reg : regs.split(" "))
-				if (n.matches("^.*" + reg + ".*$"))
+				if (name.matches("^.*%" + reg + ".*$"))
 					setrequiredreg(reg, true);
-			memory_required.put(n, required);
+			memory_required.put(name, required);
 		}
 	}
 
 	private static void setConstant(String name, boolean constant, int val) {
 		if (register.matcher(name).matches()) {
-			REGISTER_ADDRESSING_SET ras = reg(name).addressing;
+			REGISTER_ADDRESSING_SET ras = reg(name.substring(1)).addressing;
 			registers_constant.put(ras.x64.name, constant);
 			registers_constant.put(ras.x32.name, constant);
 			registers_constant.put(ras.x16.name, constant);
@@ -992,8 +986,6 @@ public class _LANG_COMPILER {
 			registers_values.put(ras.x8.name, val);
 		} else {
 			//MEMORY
-			if (name.matches(".*\\[.*]"))
-				name = name.substring(name.indexOf('[') + 1, name.indexOf(']'));
 			memory_constant.put(name, constant);
 			memory_values.put(name, val);
 		}
@@ -1010,7 +1002,7 @@ public class _LANG_COMPILER {
 			comment = parts[1];
 			argsfull = parts[0];
 		}
-		String[] args = argsfull.split("\\s*,\\s*");
+		String[] args = argsfull.split("\\s*,\\s*", 2);
 		if (args.length == 2)
 			return new ASMOP(opcode, new OPERAND(args[0]), new OPERAND(args[1])).withComment(comment);
 		else if (args.length == 1)
@@ -1501,7 +1493,7 @@ public class _LANG_COMPILER {
 
 	public static String printIdentifier(Token token) {
 		if (token instanceof IdentifierToken) {
-			return "\tmov rax, [" + ((IdentifierToken) token).identifier + "]\n\tcall printNumber\n\tcall printNewLine\n";
+			return "\tmovq " + ((IdentifierToken) token).identifier + ", %rax\n\tcall printNumber\n\tcall printNewLine\n";
 		} else return "\n";
 	}
 
@@ -1511,21 +1503,20 @@ public class _LANG_COMPILER {
 
 	public static boolean isConstant(String value) {
 		if (register.matcher(value).matches())
-			return registers_constant.get(value);
-		if (value.matches("^.*\\[.*].*$")) {
-			String key = value.substring(value.indexOf('[') + 1, value.indexOf(']'));
+			return registers_constant.get(value.substring(1));
+		if (value.matches("^.*$")) {
 			return !value.matches("^.*(" + regs.replaceAll(" ", "|") + ").*$") &&
-					memory_constant.containsKey(key) && memory_constant.get(key);
+					memory_constant.containsKey(value) && memory_constant.get(value);
 		}
-		return value.matches("^\\d+$");
+		return value.matches("^\\$\\d+$");
 	}
 
 	public static String cvalue(String name) {
-		if (name.matches("^\\d+$"))
+		if (name.matches("^\\$\\d+$"))
 			return name;
 		if (register.matcher(name).matches())
 			return Integer.toString(registers_values.get(name));
-		return Integer.toString(memory_values.get(name.matches(".*\\[.*]") ? name.substring(name.indexOf('[') + 1, name.indexOf(']')) : name));
+		return Integer.toString(memory_values.get(name));
 	}
 
 	private static Value evaluate(Token[] valueTokens) {
