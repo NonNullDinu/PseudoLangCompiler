@@ -172,7 +172,7 @@ readChar:
 global f_ro_open
 f_ro_open:
     ; File_ReadOnly_OPEN
-    mov rsi, 0
+    mov rsi, 0; O_RDONLY
     mov rdx, rbx
     mov rdi, rax
     mov rax, SYS_OPEN
@@ -189,7 +189,7 @@ f_ro_open:
 global f_wo_open
 f_wo_open:
     ; File_WriteOnly_OPEN
-    mov rsi, 0101o
+    mov rsi, 577; O_CREAT | O_WRONLY | O_TRUNC
     mov rdx, rbx
     mov rdi, rax
     mov rax, SYS_OPEN

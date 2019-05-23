@@ -85,7 +85,7 @@ Reads from the console and puts the values in the variables with those identifie
 ## Working with files
 ### Open a file
 Syntax:
-<pre>open file &lt;file_descriptor>, &lt;file_name>, &lt;file_access>, &lt;file_permissions></pre>
+<pre>open file &lt;file_descriptor>, &lt;file_name>, &lt;file_access>[, file_permissions]</pre>
 The file descriptor is a variable of type file_stream which can be read from or written to.
 
 The file name is the name of the file that should be opened.
@@ -93,6 +93,8 @@ The file name is the name of the file that should be opened.
 The file access is one of the following:
 - read only(short "ro") for files that should only be read from.
 - write only(short "wo") for files that should only be written to.
+
+The file permissions parameter is required only if the file access is write only, else it is ignored
 
 The file permissions is a base-8 number (from 3 digits):
 4 for read, 2 for write and 1 for execute. Do an or operation on these digits for to get the desired value for the permission.

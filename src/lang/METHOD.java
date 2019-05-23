@@ -60,8 +60,6 @@ public enum METHOD {
 		return "";
 	}),
 
-	CONTENT_OF_FILE_EQUALS((m, argTokens) -> null),
-
 	ERROR((m, argTokens) -> {
 		if (argTokens.length == 1 && argTokens[0].length == 1) {
 			if (argTokens[0][0] instanceof StringToken) {
@@ -145,7 +143,7 @@ public enum METHOD {
 			//argTokens[0][1] = name of variable
 			//argTokens[1][0] = name of file
 			//argTokens[2][0] = file access
-			//argTokens[3][0] = file permissions
+			//argTokens[3][0] = file permissions(not neded if argTokens[3][0] is "read only")
 			IdentifierToken name = ((IdentifierToken) argTokens[0][1]);
 			String file = ((StringToken) argTokens[1][0]).str;
 			FILE_ACCESS_TOKEN access = ((FILE_ACCESS_TOKEN) argTokens[2][0]);

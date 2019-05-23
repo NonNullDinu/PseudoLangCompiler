@@ -37,11 +37,6 @@ _start:
 	movzx r8, WORD [var_1]
 	call readValue
 	mov QWORD [var_4], rax
-	mov r8, 1
-	mov r10, QWORD [var_4]
-	mov rax, r10
-	call printNumber
-	call printNewLine
 	mov r10, 1
 	mov QWORD [var_3], 1
 .WHILE_1:

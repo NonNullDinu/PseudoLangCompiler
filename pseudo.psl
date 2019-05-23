@@ -7,7 +7,6 @@ begin
     open file fl, "pseudo.in", read only
     open file out, "pseudo.out", write only, 744
     read file fl, n
-    write n, "\n"
     for i <- 1, n do
     begin
         read file fl, a
