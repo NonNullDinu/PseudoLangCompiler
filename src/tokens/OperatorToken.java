@@ -99,30 +99,30 @@ public class OperatorToken extends Token {
 			switch (this) {
 				case ADD:
 					if (_LANG_COMPILER.isConstant(b))
-						asm = "add $" + _LANG_COMPILER.cvalue(b) + ", " + a + "\n";
-					else asm = "add " + b + ", " + a + "\n";
+						asm = "add $" + _LANG_COMPILER.cvalue(b) + ", %" + a + "\n";
+					else asm = "add %" + b + ", %" + a + "\n";
 					break;
 				case SUBTRACT:
 					if (_LANG_COMPILER.isConstant(b))
-						asm = "sub $" + _LANG_COMPILER.cvalue(b) + ", " + a + "\n";
-					else asm = "sub " + b + ", " + a + "\n";
+						asm = "sub $" + _LANG_COMPILER.cvalue(b) + ", %" + a + "\n";
+					else asm = "sub %" + b + ", %" + a + "\n";
 					break;
 				case DIVIDE: {
 					if (bvalue && pow2)
-						asm = "shr $" + log_int + ", " + a + "\n";
+						asm = "shr $" + log_int + ", %" + a + "\n";
 					else
 						asm = "movl %" + _LANG_COMPILER.reg(a).addressing.x32.name + ", %eax\n\tmovl $0, %edx\n\tdiv %" + _LANG_COMPILER.reg(b).addressing.x32.name + "\n\tmovl %eax, %" + _LANG_COMPILER.reg(a).addressing.x32.name + "\n";
 					break;
 				}
 				case MULTIPLY:
 					if (bvalue && pow2)
-						asm = "shl $" + log_int + ", " + a + "\n";
+						asm = "shl $" + log_int + ", %" + a + "\n";
 					else
 						asm = "movl $0, %edx\n\tmovl %" + _LANG_COMPILER.reg(a).addressing.x32.name + ", %eax\n\tmul %" + _LANG_COMPILER.reg(b).addressing.x32.name + "\n\tmovl %edx, %" + _LANG_COMPILER.reg(a).addressing.x32.name + "\n\tshl $32, %" + _LANG_COMPILER.reg(a).addressing.x64.name + "\n\tor %eax, %" + _LANG_COMPILER.reg(a).addressing.x32.name + "\n";
 					break;
 				case MODULO:
 					if (bvalue && pow2)
-						asm = "and $" + (bv - 1) + ", " + a;
+						asm = "and $" + (bv - 1) + ", %" + a;
 					else
 						asm = "movl %" + _LANG_COMPILER.reg(a).addressing.x32.name + ", %eax\n\tmovl $0, %edx\n\tdiv %" + _LANG_COMPILER.reg(b).addressing.x32.name + "\n\tmovl %edx, %" + _LANG_COMPILER.reg(a).addressing.x32.name + "\n";
 					break;

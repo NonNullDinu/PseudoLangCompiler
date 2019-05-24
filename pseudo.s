@@ -41,6 +41,12 @@ _start:
 	movzxw var_1, %r8
 	call readValue
 	movq %rax, var_4
+	mov $1, %r8
+	movq var_4, %r10
+	movq $0, %rdi
+	mov %r10, %rax
+	call printNumber
+	call printNewLine
 	movq $1, %r10
 	movq %r10, var_3
 WHILE_1:
@@ -51,6 +57,7 @@ WHILE_1:
 	jg .LOGIC_1
 	movq $1, %r10
 .LOGIC_1:
+	movq $0, %rdi
 	cmpq $0, %r10
 	je WHILE_1_END
 	movzxw var_1, %r8
@@ -58,6 +65,7 @@ WHILE_1:
 	movq %rax, var_0
 	movzxw var_2, %r8
 	movq var_0, %r10
+	movq $0, %rdi
 	mov %r10, %rax
 	call printNumber
 	call printNewLine

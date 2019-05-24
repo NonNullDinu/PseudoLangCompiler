@@ -75,6 +75,7 @@ public class _LANG_COMPILER {
 	private static Map<String, Boolean> register_required = new HashMap<>();
 	private static Map<String, Boolean> memory_required = new HashMap<>();
 	private static int var_ind = 0;
+	private static final String INDEX_REGISTER = "%rdi";
 
 	public static void addNewVar(String name, String value) {
 		dataVars.add(new VAR_(name, DATA_TYPE.STRING, value));
@@ -95,6 +96,7 @@ public class _LANG_COMPILER {
 	private static String jumpTrueLabel;
 	private static String nl = "\n";
 	private static String nlr = "\\n";
+	private static String preparations; // NEEDED FOR WORKING WITH ICT
 
 	static {
 		for (String reg : regs.split(" ")) {
@@ -498,15 +500,23 @@ public class _LANG_COMPILER {
 			if (depth == 0)
 				return "movq $" + Objects.requireNonNull(evaluate(valueTokens)).vi + ", %r10\n";
 			else
-				return "movq $" + Objects.requireNonNull(evaluate(valueTokens)).vi + ", INTERNAL____CACHE(," + (cache_ptr = internal_cache_index++) + ",8)\n";
+				return "movq $" + (8 * (cache_ptr = internal_cache_index++)) + ", " + INDEX_REGISTER + "\nmovq $" + Objects.requireNonNull(evaluate(valueTokens)).vi + ", INTERNAL____CACHE(" + INDEX_REGISTER + ")\n";
 		}
 
 		if (valueTokens.length == 1) {
-			return "\tmovq " + value(valueTokens[0]) + ", %r10\n\tmovq %r10, INTERNAL____CACHE(," + (cache_ptr = internal_cache_index++) + ",8)\n";
+			preparations = "";
+			String v = value(valueTokens[0]);
+			return preparations + "\tmovq " + v + ", %r10\n\tmovq $" + (8 * (cache_ptr = internal_cache_index++)) + ", " + INDEX_REGISTER + "\n\tmovq %r10, INTERNAL____CACHE(" + INDEX_REGISTER + ")\n";
 		} else if (valueTokens.length == 3) {
-			String asm_ = "\tmovq " + value(valueTokens[0]) + ", %r10\n\tmovq " + value(valueTokens[2]) + ", %r11\n\t" + ((OperatorToken) valueTokens[1]).asm_code("r10", "r11") + "\n";
+			preparations = "";
+			String val = value(valueTokens[0]);
+			String asm_ = preparations + "\tmovq " + val + ", %r10\n";
+			preparations = "";
+			val = value(valueTokens[2]);
+			asm_ += preparations + "\tmovq " + val + ", %r11\n";
+			asm_ += "\t" + ((OperatorToken) valueTokens[1]).asm_code("r10", "r11") + "\n";
 			if (depth != 0)
-				asm_ += "\tmovq %r10, INTERNAL____CACHE(," + (cache_ptr = internal_cache_index++) + ",8)\n";
+				asm_ += "\tmovq $" + (8 * (cache_ptr = internal_cache_index++)) + ", " + INDEX_REGISTER + "\n\tmovq %r10, INTERNAL____CACHE(" + INDEX_REGISTER + ")\n";
 			return asm_;
 		} else {
 			int i;
@@ -563,17 +573,17 @@ public class _LANG_COMPILER {
 							a = 8 * cache_ptr;
 							if (depth == 0) {
 								if (((OperatorToken) valueTokens[i]).mop == OperatorToken.Math_Operator.LOGIC_AND) {
-									asm.append("\tCMPQ $0, INTERNAL____CACHE(,").append(a).append(",1)\n\tJE ").append(jumpFalseLabel).append("\n");
+									asm.append("\tmovq $").append(a).append(", %rax\n\tCMPQ $0, INTERNAL____CACHE(%rax)\n\tJE ").append(jumpFalseLabel).append("\n");
 								} else if (((OperatorToken) valueTokens[i]).mop == OperatorToken.Math_Operator.LOGIC_OR) {
-									asm.append("\tCMPQ $0, INTERNAL____CACHE(,").append(a).append(",1)\n\tJNE ").append(jumpTrueLabel).append("\n");
+									asm.append("\tmovq $").append(a).append(", %rax\n\tCMPQ $0, INTERNAL____CACHE(%rax)\n\tJNE ").append(jumpTrueLabel).append("\n");
 								}
 							}
 							asm.append(valueInstructions(tokens2));
-							asm.append("\tmovq INTERNAL____CACHE(,").append(a).append(",1), %r10\n");
-							asm.append("\tmovq INTERNAL____CACHE(,").append(cache_ptr).append(",8), %r11\n");
+							asm.append("\tmovq $").append(a).append(", ").append(INDEX_REGISTER).append("\n\tmovq INTERNAL____CACHE(").append(INDEX_REGISTER).append("), %r10\n");
+							asm.append("\tmovq $").append(8 * cache_ptr).append(", ").append(INDEX_REGISTER).append("\n\tmovq INTERNAL____CACHE(").append(INDEX_REGISTER).append("), %r11\n");
 							asm.append(((OperatorToken) valueTokens[i]).asm_code("r10", "r11"));
 							if (depth != 0)
-								asm.append("\n\tmovq %r10, INTERNAL____CACHE(,").append(cache_ptr).append(",8)\n");
+								asm.append("\n\tmovq $").append(8 * cache_ptr).append(", ").append(INDEX_REGISTER).append("\n\tmovq %r10, INTERNAL____CACHE(").append(INDEX_REGISTER).append(")\n");
 							return asm.toString();
 					}
 			}
@@ -595,11 +605,11 @@ public class _LANG_COMPILER {
 							asm.append(valueInstructions(tokens1));
 							a = 8 * cache_ptr;
 							asm.append(valueInstructions(tokens2));
-							asm.append("\tmovq INTERNAL____CACHE(,").append(a).append(",1), %r10\n");
-							asm.append("\tmovq INTERNAL____CACHE(,").append(cache_ptr).append(",8), %r11\n");
+							asm.append("\tmovq $").append(a).append(", ").append(INDEX_REGISTER).append("\n\tmovq INTERNAL____CACHE(").append(INDEX_REGISTER).append("), %r10\n");
+							asm.append("\tmovq $").append(8 * cache_ptr).append(", ").append(INDEX_REGISTER).append("\n\tmovq INTERNAL____CACHE(").append(INDEX_REGISTER).append("), %r11\n");
 							asm.append(((OperatorToken) valueTokens[i]).asm_code("r10", "r11"));
 							if (depth != 0)
-								asm.append("\n\tmovq %r10, INTERNAL____CACHE(,").append(cache_ptr).append(",8)\n");
+								asm.append("\n\tmovq $").append(8 * cache_ptr).append(", ").append(INDEX_REGISTER).append("\n\tmovq %r10, INTERNAL____CACHE(").append(INDEX_REGISTER).append(")\n");
 							return asm.toString();
 					}
 			}
@@ -616,11 +626,11 @@ public class _LANG_COMPILER {
 							asm.append(valueInstructions(tokens1));
 							a = 8 * cache_ptr;
 							asm.append(valueInstructions(tokens2));
-							asm.append("\tmovq INTERNAL____CACHE(,").append(a).append(",1), %r10\n");
-							asm.append("\tmovq INTERNAL____CACHE(,").append(cache_ptr).append(",8), %r11\n");
+							asm.append("\tmovq $").append(a).append(", ").append(INDEX_REGISTER).append("\n\tmovq INTERNAL____CACHE(").append(INDEX_REGISTER).append("), %r10\n");
+							asm.append("\tmovq $").append(8 * cache_ptr).append(", ").append(INDEX_REGISTER).append("\n\tmovq INTERNAL____CACHE(").append(INDEX_REGISTER).append("), %r11\n");
 							asm.append(((OperatorToken) valueTokens[i]).asm_code("r10", "r11"));
 							if (depth != 0)
-								asm.append("\n\tmovq %r10, INTERNAL____CACHE(,").append(cache_ptr).append(",8)\n");
+								asm.append("\n\tmovq $").append(8 * cache_ptr).append(", ").append(INDEX_REGISTER).append("\n\tmovq %r10, INTERNAL____CACHE(").append(INDEX_REGISTER).append(")\n");
 							return asm.toString();
 					}
 			}
@@ -637,11 +647,11 @@ public class _LANG_COMPILER {
 							asm.append(valueInstructions(tokens1));
 							a = 8 * cache_ptr;
 							asm.append(valueInstructions(tokens2));
-							asm.append("\tmovq INTERNAL____CACHE(,").append(a).append(",1), %r10\n");
-							asm.append("\tmovq INTERNAL____CACHE(,").append(cache_ptr).append(",8), %r11\n");
+							asm.append("\tmovq $").append(a).append(", ").append(INDEX_REGISTER).append("\n\tmovq INTERNAL____CACHE(").append(INDEX_REGISTER).append("), %r10\n");
+							asm.append("\tmovq $").append(8 * cache_ptr).append(", ").append(INDEX_REGISTER).append("\n\tmovq INTERNAL____CACHE(").append(INDEX_REGISTER).append("), %r11\n");
 							asm.append(((OperatorToken) valueTokens[i]).asm_code("r10", "r11"));
 							if (depth != 0)
-								asm.append("\n\tmovq %r10, INTERNAL____CACHE(,").append(cache_ptr).append(",8)\n");
+								asm.append("\n\tmovq $").append(8 * cache_ptr).append(", ").append(INDEX_REGISTER).append("\n\tmovq %r10, INTERNAL____CACHE(").append(INDEX_REGISTER).append(")\n");
 							return asm.toString();
 					}
 			}
@@ -661,11 +671,11 @@ public class _LANG_COMPILER {
 							asm.append(valueInstructions(tokens1));
 							a = 8 * cache_ptr;
 							asm.append(valueInstructions(tokens2));
-							asm.append("\tmovq INTERNAL____CACHE(,").append(a).append(",1), %r10\n");
-							asm.append("\tmovq INTERNAL____CACHE(,").append(cache_ptr).append(",8), %r11\n");
+							asm.append("\tmovq $").append(a).append(", ").append(INDEX_REGISTER).append("\n\tmovq INTERNAL____CACHE(").append(INDEX_REGISTER).append("), %r10\n");
+							asm.append("\tmovq $").append(8 * cache_ptr).append(", ").append(INDEX_REGISTER).append("\n\tmovq INTERNAL____CACHE(").append(INDEX_REGISTER).append("), %r11\n");
 							asm.append(((OperatorToken) valueTokens[i]).asm_code("r10", "r11"));
 							if (depth != 0)
-								asm.append("\n\tmovq %r10, INTERNAL____CACHE(,").append(cache_ptr).append(",8)\n");
+								asm.append("\n\tmovq $").append(8 * cache_ptr).append(", ").append(INDEX_REGISTER).append("\n\tmovq %r10, INTERNAL____CACHE(").append(INDEX_REGISTER).append(")\n");
 							return asm.toString();
 					}
 			}
@@ -677,7 +687,7 @@ public class _LANG_COMPILER {
 					asm.append(valueInstructions(tokens2));
 					asm.append(((UnaryOperatorToken) valueTokens[i]).asm_code("r10"));
 					if (depth != 0)
-						asm.append("\n\tmovq %r10, INTERNAL____CACHE(,").append(cache_ptr).append(",8), r10\n");
+						asm.append("\n\tmovq %r10, INTERNAL____CACHE(").append(8 * cache_ptr).append("), r10\n");
 					return asm.toString();
 				}
 			}
@@ -724,9 +734,10 @@ public class _LANG_COMPILER {
 		else if (token instanceof IdentifierToken) {
 			IdentifierToken idf = ((IdentifierToken) token);
 			return "var_" + var_indices.get(idf.identifier);
-		} else if (token instanceof INTERNAL____CACHE_TOKEN)
-			return "INTERNAL____CACHE(," + (((INTERNAL____CACHE_TOKEN) token).qwordoffset) + ",8)";
-		else if (token instanceof LogicConstantValueToken)
+		} else if (token instanceof INTERNAL____CACHE_TOKEN) {
+			preparations = "\tmovq $" + (8 * ((INTERNAL____CACHE_TOKEN) token).qwordoffset) + ", " + INDEX_REGISTER + "\n";
+			return "INTERNAL____CACHE(" + INDEX_REGISTER + ")";
+		} else if (token instanceof LogicConstantValueToken)
 			return ((LogicConstantValueToken) token).v ? "$1" : "$0";
 		else return "";
 	}
@@ -806,19 +817,21 @@ public class _LANG_COMPILER {
 				}
 			} else { // 1 or 0 args
 				if (asmop.OP.equals("int") && asmop.arg1.value.equals("$0x80") || asmop.OP.equals("syscall")) {
-					setConstant("rax", false, 0);
+					setConstant("%rax", false, 0);
 				} else if (asmop.OP.matches("^(mul|div)(.?)$")) {
-					setConstant("rax", false, 0);
-					setConstant("rdx", false, 0);
+					setConstant("%rax", false, 0);
+					setConstant("%rdx", false, 0);
 				} else if (asmop.OP.equals("call")) {
 					switch (asmop.arg1.value) {
 						case "readValue":
-							setConstant("rax", false, 0);
+							setConstant("%rax", false, 0);
 							break;
 					}
 				}
 			}
 		}
+		for (int i = 0; i < OPERATIONS.size(); i++)
+			OPERATIONS.get(i).print();
 		for (int i = OPERATIONS.size() - 1; i >= 0; i--) {
 			ASMOP op = OPERATIONS.get(i);
 			if (op.isLabel || op.isJump) {
@@ -829,31 +842,60 @@ public class _LANG_COMPILER {
 				continue;
 			}
 			if (op.OP.matches("^mov(zx|sb)?(.?)$")) {
-				if ((op.comment == null || !(op.comment.equals("POINTER") || op.comment.equals("NO_DELETE"))) && !isRequired(op.arg2.value)) {
+				String check = op.arg1.value;
+				String check2 = op.arg2.value;
+				ASMOP prevop = OPERATIONS.get(i - 1);
+				boolean requiresindex = false;
+				if (check.contains(INDEX_REGISTER) && !check.equals(INDEX_REGISTER) && prevop.arg2.value.equals(INDEX_REGISTER)) {
+					check = check.replaceAll(INDEX_REGISTER, prevop.arg1.value.replace("$", ""));
+					requiresindex = true;
+				}
+				if (check2.contains(INDEX_REGISTER) && !check2.equals(INDEX_REGISTER) && prevop.arg2.value.equals(INDEX_REGISTER)) {
+					check2 = check2.replaceAll(INDEX_REGISTER, prevop.arg1.value.replace("$", ""));
+					requiresindex = true;
+				}
+				if ((op.comment == null || !(op.comment.equals("POINTER") || op.comment.equals("NO_DELETE"))) && !isRequired(check2)) {
 					OPERATIONS.remove(i);
-					op.print();
+//					op.print();
 					continue;
 				}
-				setrequired(op.arg2.value, false);
-				setrequired(op.arg1.value, true);
+				setrequired(check2, false);
+				setrequired(check, true);
+				if (requiresindex)
+					setrequiredreg(INDEX_REGISTER, true);
 			} else if (op.OP.startsWith("lea")) {
-				if ((op.comment == null || !(op.comment.equals("POINTER") || op.comment.equals("NO_DELETE"))) && !isRequired(op.arg2.value)) {
+				String check = op.arg1.value;
+				String check2 = op.arg2.value;
+				ASMOP prevop = OPERATIONS.get(i - 1);
+				boolean requiresindex = false;
+				if (check.contains(INDEX_REGISTER) && !check.equals(INDEX_REGISTER) && prevop.arg2.value.equals(INDEX_REGISTER)) {
+					check = check.replaceAll(INDEX_REGISTER, prevop.arg1.value.replace("$", ""));
+					requiresindex = true;
+				}
+				if (check2.contains(INDEX_REGISTER) && !check2.equals(INDEX_REGISTER) && prevop.arg2.value.equals(INDEX_REGISTER)) {
+					check2 = check2.replaceAll(INDEX_REGISTER, prevop.arg1.value.replace("$", ""));
+					requiresindex = true;
+				}
+				if ((op.comment == null || !(op.comment.equals("POINTER") || op.comment.equals("NO_DELETE"))) && !isRequired(check2)) {
 					OPERATIONS.remove(i);
+//					op.print();
 					continue;
 				}
-				setrequired(op.arg2.value, false);
-				setrequired(op.arg1.value, true);
+				setrequired(check2, false);
+				setrequired(check, true);
+				if (requiresindex)
+					setrequiredreg(INDEX_REGISTER, true);
 			} else if ((op.OP.equals("int") && op.arg1.value.equals("0x80")) || op.OP.equals("syscall")) {
-				setrequiredreg("rax", true);
-				setrequiredreg("rbx", true);
-				setrequiredreg("rcx", true);
-				setrequiredreg("rdx", true);
+				setrequiredreg("%rax", true);
+				setrequiredreg("%rbx", true);
+				setrequiredreg("%rcx", true);
+				setrequiredreg("%rdx", true);
 			} else if (op.OP.startsWith("div")) {
-				setrequiredreg("rax", true);
-				setrequiredreg("rdx", true);
+				setrequiredreg("%rax", true);
+				setrequiredreg("%rdx", true);
 				setrequired(op.arg1.value, true);
 			} else if (op.OP.startsWith("mul")) {
-				setrequiredreg("rax", true);
+				setrequiredreg("%rax", true);
 				setrequired(op.arg1.value, true);
 			} else if (op.OP.startsWith("test")) {
 				setrequiredreg(op.arg1.value, true);
@@ -862,20 +904,20 @@ public class _LANG_COMPILER {
 				switch (op.arg1.value) {
 					case "print_char":
 					case "printNumber":
-						setrequiredreg("rax", true);
-						setrequiredreg("r8", true);
+						setrequiredreg("%rax", true);
+						setrequiredreg("%r8", true);
 						break;
 					case "readValue":
-						setrequiredreg("r8", true);
+						setrequiredreg("%r8", true);
 						break;
 					case "exit":
 					case "f_close":
 					case "f_ro_open":
-						setrequiredreg("rax", true);
+						setrequiredreg("%rax", true);
 						break;
 					case "f_wo_open":
-						setrequiredreg("rax", true);
-						setrequiredreg("rbx", true);
+						setrequiredreg("%rax", true);
+						setrequiredreg("%rbx", true);
 						break;
 				}
 			} else if (op.OP.startsWith("push")) {
@@ -886,6 +928,9 @@ public class _LANG_COMPILER {
 				setrequired(op.arg1.value, true);
 				setrequired(op.arg2.value, true);
 			} else if (op.OP.matches("^(add|sub|and|or|xor|shl|shr)(.?)$")) {
+				setrequired(op.arg1.value, true);
+				setrequired(op.arg2.value, true);
+			} else if (op.OP.startsWith("add") || op.OP.startsWith("sub")) {
 				setrequired(op.arg1.value, true);
 				setrequired(op.arg2.value, true);
 			}
@@ -946,6 +991,8 @@ public class _LANG_COMPILER {
 	}
 
 	private static void setrequiredreg(String name, boolean required) {
+		if (name.startsWith("%"))
+			name = name.substring(1);
 		REGISTER_ADDRESSING_SET ras = reg(name).addressing;
 		register_required.replace(ras.x64.name, required);
 		register_required.replace(ras.x32.name, required);
@@ -956,7 +1003,7 @@ public class _LANG_COMPILER {
 	private static boolean isRequired(String name) {
 		if (register.matcher(name).matches()) {
 			return register_required.get(name.substring(1));
-		} else if (name.matches("^var_\\d+$") || name.matches("^INTERNAL____CACHE\\(,\\d+,\\d+\\)$")) {
+		} else if (name.matches("^var_\\d+$") || name.matches("^INTERNAL____CACHE\\(\\d+\\)$")) {
 			return (memory_required.containsKey(name) && memory_required.get(name));
 		}
 		return false;
@@ -965,7 +1012,7 @@ public class _LANG_COMPILER {
 	private static void setrequired(String name, boolean required) {
 		if (register.matcher(name).matches()) {
 			setrequiredreg(name.substring(1), required);
-		} else if (name.matches("^.*$")) {
+		} else {
 			for (String reg : regs.split(" "))
 				if (name.matches("^.*%" + reg + ".*$"))
 					setrequiredreg(reg, true);
@@ -1002,7 +1049,7 @@ public class _LANG_COMPILER {
 			comment = parts[1];
 			argsfull = parts[0];
 		}
-		String[] args = argsfull.split("\\s*,\\s*", 2);
+		String[] args = argsfull.split(",\\s*(?=[^)]*(?:\\(|$))");
 		if (args.length == 2)
 			return new ASMOP(opcode, new OPERAND(args[0]), new OPERAND(args[1])).withComment(comment);
 		else if (args.length == 1)
@@ -1397,7 +1444,7 @@ public class _LANG_COMPILER {
 		if (s.matches("^\\d+(.|\\n)*$")) {
 			int i;
 			char c = s.charAt(0);
-			for (i = 1; i < s.length() && (isDigit(c) || c == '-'); i++) {
+			for (i = 1; i < s.length() && (isDigit(c) || c == '.'); i++) {
 				c = s.charAt(i);
 			}
 			return s.substring(0, i - 1);
