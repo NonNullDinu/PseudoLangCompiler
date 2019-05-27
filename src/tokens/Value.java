@@ -55,9 +55,4 @@ public class Value {
 				break;
 		}
 	}
-
-	public Value(Payload payload) {
-		type = DATA_TYPE.BYTE_STREAM;
-		this.vbs = payload.payload;
-	}
 }

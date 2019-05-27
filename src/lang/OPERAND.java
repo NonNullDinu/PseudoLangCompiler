@@ -24,6 +24,6 @@ public class OPERAND {
 
 	public OPERAND(String value) {
 		this.value = value;
-		this.value_is_immediate = value.matches("^\\d+$");
+		this.value_is_immediate = value.matches("^\\$\\d+$");
 	}
 }

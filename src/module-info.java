@@ -1,6 +1,6 @@
 module Pseudo_LANG_COMPILER {
 	requires java.se;
-	exports run;
+	exports main;
 	exports tokens;
 	exports statements;
 	exports tree;

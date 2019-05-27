@@ -24,7 +24,6 @@ public enum Statement_TYPE {
 	VAR_UPDATE,
 	CONDITIONAL,
 	WHILE_LOOP,
-	INCREMENT,
 	FOR_LOOP,
 	METHOD_CALL,
 	DO_WHILE;
@@ -37,7 +36,7 @@ public enum Statement_TYPE {
 				break;
 			}
 			case VAR_UPDATE: {
-				ret = ind < t.length - 1 && t[ind] instanceof IdentifierToken && t[ind + 1] instanceof AssignmentToken;
+				ret = ind < t.length - 1 && (t[ind] instanceof IdentifierToken || t[ind] instanceof ArrayIdentifier) && t[ind + 1] instanceof AssignmentToken;
 				break;
 			}
 			case CONDITIONAL:
@@ -45,9 +44,6 @@ public enum Statement_TYPE {
 				break;
 			case WHILE_LOOP:
 				ret = ind < t.length - 1 && t[ind] instanceof WhileToken && t[ind + 1] instanceof ParenthesisOpenedToken;
-				break;
-			case INCREMENT:
-				ret = ind < t.length - 1 && t[ind] instanceof IdentifierToken && t[ind + 1] instanceof IncrementToken;
 				break;
 			case METHOD_CALL:
 				ret = t[ind] instanceof IdentifierToken;

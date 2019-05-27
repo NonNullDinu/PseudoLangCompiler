@@ -17,7 +17,7 @@
 
 package tokens;
 
-import run._LANG_COMPILER;
+import main._LANG_COMPILER;
 import variables.DATA_TYPE;
 
 import java.util.ArrayList;
@@ -25,11 +25,11 @@ import java.util.List;
 
 public class IdentifierToken extends Token {
 	public static final List<IdentifierToken> identifiers = new ArrayList<>();
-	public _LANG_COMPILER.VAR_ var;
+	public _LANG_COMPILER.VarManager.VAR_ var;
 	public String identifier;
 	public DATA_TYPE data_type;
 
-	public IdentifierToken(String identifier, DATA_TYPE dt, _LANG_COMPILER.VAR_ var) {
+	public IdentifierToken(String identifier, DATA_TYPE dt, _LANG_COMPILER.VarManager.VAR_ var) {
 		this.identifier = identifier;
 		this.data_type = dt;
 		this.var = var;

@@ -17,48 +17,18 @@
 
 package lang;
 
-import run._LANG_COMPILER;
+import main._LANG_COMPILER;
 import tokens.*;
 
-import java.util.Arrays;
+import java.util.Objects;
 
 public enum METHOD {
 	EXIT((m, argTokens) -> {
 		if (argTokens != null && argTokens.length > 0) {
-			return _LANG_COMPILER.valueInstructions(argTokens[0]) + "\tmov %r10, %rax\n\tcall exit\n";
+			return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmov %r10, %rax\n\tcall exit\n";
 		} else
 			return "\tmovq $0, %rax\n\tcall exit\n";
 	}),
-
-//	WRITE_TO((m, argTokens) -> {
-//		String asm = "NULL\n";
-//		if (argTokens != null && argTokens.length == 2) {
-//			String name = ((StringToken) argTokens[0][0]).str;
-//			((PayloadToken) argTokens[1][0]).bind();
-//			Payload pl = ((PayloadToken) argTokens[1][0]).payload;
-//			_LANG_COMPILER.addNewVar("file_" + ++_LANG_COMPILER.fileCode + "_path", name + ", 0");
-//			_LANG_COMPILER.addNewRESWVar("file_" + _LANG_COMPILER.fileCode + "_desc");
-//			_LANG_COMPILER.addNewVar("file_" + _LANG_COMPILER.fileCode + "_content", pl.payload);
-//			asm = "\tmovq $8, %rax\n\tmov ebx, file_" + _LANG_COMPILER.fileCode + "_path\n\tmov ecx, 0q644\n\tsyscall\n\tmov [file_" + _LANG_COMPILER.fileCode + "_desc], eax\n\tmov eax, 4\n\tmov ebx, [file_" + _LANG_COMPILER.fileCode + "_desc]\n\tmov ecx, file_" + _LANG_COMPILER.fileCode + "_content\n\tmov edx, " + pl.payload.length + "\n\tsyscall\n\tmov eax, 6\n\tmov ebx, [file_" + _LANG_COMPILER.fileCode + "_desc]\n\tsyscall\n";
-//		}
-//		return asm;
-//	}),
-
-//	DEBUG_PRINT((m, argTokens) -> {
-//		if (argTokens.length == 1 && argTokens[0].length == 1) {
-//			if (argTokens[0][0] instanceof StringToken) {
-//				_LANG_COMPILER.addNewVar("str_" + ++_LANG_COMPILER.strCode, ((StringToken) argTokens[0][0]).str + ", 10, 0");
-//				return "\tmov eax, 4\n\tmov ebx, 1\n\tmov ecx, str_" + _LANG_COMPILER.strCode + "\n\tmov edx, " + (((StringToken) argTokens[0][0]).str.length()) + "\n\tsyscall\n";
-//			} else if (argTokens[0][0] instanceof NumberToken) {
-//				String val = Integer.toString(((NumberToken) argTokens[0][0]).v);
-//				_LANG_COMPILER.addNewVar("str_" + ++_LANG_COMPILER.strCode, val);
-//				return "\tmov eax, 4\n\tmov ebx, 1\n\tmov ecx, str_" + _LANG_COMPILER.strCode + "\n\tmov edx, " + (val.length()) + "\n\tsyscall\n\tcall printNewLine\n";
-//			} else if (argTokens[0][0] instanceof IdentifierToken) {
-//				return "\tmov r8, 1\n" + _LANG_COMPILER.printIdentifier(argTokens[0][0]);
-//			}
-//		}
-//		return "";
-//	}),
 
 //	ERROR((m, argTokens) -> {
 //		if (argTokens.length == 1 && argTokens[0].length == 1) {
@@ -81,7 +51,7 @@ public enum METHOD {
 		if (argTokens != null && argTokens.length != 0)
 			for (int i = argTokens.length - 1; i >= 0; i--) {
 				_LANG_COMPILER.rec_ind = 0;
-				methodBody.append(_LANG_COMPILER.valueInstructions(argTokens[i])).append("\tpushq %r10\n");
+				methodBody.append(_LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[i])).append("\tpushq %r10\n");
 			}
 		methodBody.append("\tcall ").append(m.name).append("\n");
 		if (argTokens != null && argTokens.length != 0)
@@ -91,7 +61,7 @@ public enum METHOD {
 
 	PRINT_DIGIT((m, argTokens) -> {
 		_LANG_COMPILER.rec_ind = 0;
-		return _LANG_COMPILER.valueInstructions(argTokens[0]) + "\tleaq digits(,%r10,1), %rax\n\tcall print_char\n";
+		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tleaq digits(,%r10,1), %rax\n\tcall print_char\n";
 	}),
 	ASM((m, argTokens) -> {
 		StringBuilder asm = new StringBuilder();
@@ -127,14 +97,17 @@ public enum METHOD {
 			}
 			if (a[0] instanceof StringToken) {
 				if (!((StringToken) a[0]).str.equals("\"\\n\"")) {
-					_LANG_COMPILER.addNewVar("str_" + ++_LANG_COMPILER.strCode, ".ascii " + ((StringToken) a[0]).str + "\n.zero 1");
-					asm.append("\tmov eax, 4\n\tmov ebx, r8d\n\tmov ecx, str_").append(_LANG_COMPILER.strCode).append("\n\tmov edx, ").append(((StringToken) a[0]).str.length() - 2).append("\n\tsyscall\n");
+					_LANG_COMPILER.VarManager.VAR_ str = _LANG_COMPILER.lookupStringVar(".asciz " + ((StringToken) a[0]).str);
+					if (str == null) {
+						_LANG_COMPILER.addNewVar("str_" + ++_LANG_COMPILER.strCode, ".asciz " + ((StringToken) a[0]).str);
+						str = _LANG_COMPILER.lookupStringVar(".asciz " + ((StringToken) a[0]).str);
+					}
+					asm.append("\tmovq $1, %rax\n\tmovq %r8, %rdi\n\tmovq $").append(str.name).append(", %rsi\n\tmovq $").append(((StringToken) a[0]).str.length() - 2).append(", %rdx\n\tsyscall\n");
 				} else
 					asm.append("\tcall printNewLine\n");
 			} else {
 				_LANG_COMPILER.rec_ind = 0;
-				System.out.println(Arrays.deepToString(a));
-				asm.append(_LANG_COMPILER.valueInstructions(a)).append("\tmov %r10, %rax\n\tcall printNumber\n");
+				asm.append(_LANG_COMPILER.AssemblyMake.valueInstructions(a)).append("\tmov %r10, %rax\n\tcall printNumber\n");
 			}
 		}
 		return asm.toString();
@@ -149,17 +122,17 @@ public enum METHOD {
 			IdentifierToken name = ((IdentifierToken) argTokens[0][1]);
 			String file = ((StringToken) argTokens[1][0]).str;
 			FILE_ACCESS_TOKEN access = ((FILE_ACCESS_TOKEN) argTokens[2][0]);
-			_LANG_COMPILER.addNewVar("file_" + ++_LANG_COMPILER.fileCode + "_path", ".ascii " + file + "\n.zero 1");
+			_LANG_COMPILER.addNewVar("file_" + ++_LANG_COMPILER.fileCode + "_path", ".asciz " + file);
 			if (access.access.equals(FILE_ACCESS.WRITE_ONLY)) {
 				int perm = ((NumberToken) argTokens[3][0]).v;
 				asm = "\tmovq $file_" + _LANG_COMPILER.fileCode + "_path, %rax\n" +
 						"\tmovq $0" + perm + ", %rbx\n" +
 						"\tcall " + access.access.func_open() + "\n" +
-						"\tmovw %ax, var_" + _LANG_COMPILER.var_indices.get(name.identifier) + "\n";
+						"\tmovw %ax, var_" + _LANG_COMPILER.var_indices.get(name.identifier) + "//NO_DELETE\n";
 			} else {
 				asm = "\tmovq $file_" + _LANG_COMPILER.fileCode + "_path, %rax\n" +
 						"\tcall " + access.access.func_open() + "\n" +
-						"\tmovw %ax, var_" + _LANG_COMPILER.var_indices.get(name.identifier) + "\n";
+						"\tmovw %ax, var_" + _LANG_COMPILER.var_indices.get(name.identifier) + "//NO_DELETE\n";
 			}
 		}
 		return asm;
@@ -170,16 +143,58 @@ public enum METHOD {
 					"\tcall f_close\n";
 		}
 		return "";
-	}));
+	})),
+	ALLOCATE((m, argTokens) -> {
+		//argTokens[0] type
+		//argTokens[1] name(of type pointer)
+		//argTokens[2] size
+		TypeToken tt = argTokens[0][0] instanceof TypeToken ? ((TypeToken) argTokens[0][0]) : null;
+		CompositeTypeToken ctt = argTokens[0][0] instanceof CompositeTypeToken ? ((CompositeTypeToken) argTokens[0][0]) : null;
+		for (Array a : Array.arrays)
+			if (a.name.equals(((IdentifierToken) argTokens[1][0]).identifier))
+				a.setType(tt != null ? tt.data_type() : ctt != null ? ctt.data_type() : null);
+		_LANG_COMPILER.VarManager.setVarSize(((IdentifierToken) argTokens[1][0]).identifier, Objects.requireNonNull(_LANG_COMPILER.AssemblyMake.evaluate(argTokens[2])).vi);
+		return "";
+	}),
+	SORT(((m, argTokens) -> {
+		//BEGIN
+		_LANG_COMPILER.rec_ind = 0;
+		String v1 = _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tpushq %r10\n";
+		//END
+		_LANG_COMPILER.rec_ind = 0;
+		String v2 = _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[1]) + "\tmovq %r10, %rsi\n";
+		return v1 + v2 + "\tpopq %rdi\n\tcall merge_sort\n";
+	})),
+	REVERSE_SORT(((m, argTokens) -> {
+		//BEGIN
+		_LANG_COMPILER.rec_ind = 0;
+		String v1 = _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tpushq %r10\n";
+		//END
+		_LANG_COMPILER.rec_ind = 0;
+		String v2 = _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[1]) + "\tmovq %r10, %rbx\n";
+		return v1 + v2 + "\tpopq %rax\n\tcall reverse_sort\n";
+	})),
+	REVERSE(((m, argTokens) -> {
+		//BEGIN
+		_LANG_COMPILER.rec_ind = 0;
+		String v1 = _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tpushq %r10\n";
+		//END
+		_LANG_COMPILER.rec_ind = 0;
+		String v2 = _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[1]) + "\tmovq %r10, %rbx\n";
+		return v1 + v2 + "\tpopq %rax\n\tcall reverse\n";
+	})),
+	SWAP((m, argTokens) -> {
+		return "\tmovq $var_" + _LANG_COMPILER.var_indices.get(((IdentifierToken) argTokens[0][0]).identifier) + ", %rcx\n\tmovq $var_" + _LANG_COMPILER.var_indices.get(((IdentifierToken) argTokens[1][0]).identifier) + ", %rdx\n\tcall swap\n";
+	});
 	private CALLBACK callback;
 
 	METHOD(CALLBACK callback) {
 		this.callback = callback;
 	}
 
-	public String assembly(Token[][] argTokens) {
-		return callback.assembly(null, argTokens);
-	}
+//	public String assembly(Token[][] argTokens) {
+//		return callback.assembly(null, argTokens);
+//	}
 
 	public String assembly(Method m, Token[][] argTokens) {
 		return callback.assembly(m, argTokens);

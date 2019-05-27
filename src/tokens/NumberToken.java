@@ -25,6 +25,10 @@ public class NumberToken extends Token {
 		this.v = v;
 	}
 
+	public static boolean isAsmImmediate(String v) {
+		return v.matches("^\\$\\d+$");
+	}
+
 	@Override
 	public String toString() {
 		return "NT(" + v + ")";

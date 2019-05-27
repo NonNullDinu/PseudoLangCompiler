@@ -17,7 +17,7 @@
 
 package tokens;
 
-import run._LANG_COMPILER;
+import main._LANG_COMPILER;
 
 public class OperatorToken extends Token {
 	public Math_Operator mop;
@@ -98,13 +98,13 @@ public class OperatorToken extends Token {
 			}
 			switch (this) {
 				case ADD:
-					if (_LANG_COMPILER.isConstant(b))
-						asm = "add $" + _LANG_COMPILER.cvalue(b) + ", %" + a + "\n";
+					if (NumberToken.isAsmImmediate(b))
+						asm = "add $" + b + ", %" + a + "\n";
 					else asm = "add %" + b + ", %" + a + "\n";
 					break;
 				case SUBTRACT:
-					if (_LANG_COMPILER.isConstant(b))
-						asm = "sub $" + _LANG_COMPILER.cvalue(b) + ", %" + a + "\n";
+					if (NumberToken.isAsmImmediate(b))
+						asm = "sub $" + b + ", %" + a + "\n";
 					else asm = "sub %" + b + ", %" + a + "\n";
 					break;
 				case DIVIDE: {

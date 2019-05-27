@@ -38,6 +38,8 @@ public class TypeToken extends Token {
 				return DATA_TYPE.LONG;
 			case "file_stream":
 				return DATA_TYPE.SHORT_INT;
+			case "pointer":
+				return DATA_TYPE.POINTER;
 			default:
 				return null;
 		}

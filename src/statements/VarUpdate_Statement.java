@@ -22,10 +22,10 @@ import variables.DATA_TYPE;
 
 public class VarUpdate_Statement extends Statement {
 	public final Token[] value;
-	public final String name;
+	public final Token name;
 	public DATA_TYPE dt;
 
-	public VarUpdate_Statement(String name, Token[] value) {
+	public VarUpdate_Statement(Token name, Token[] value) {
 		super(Statement_TYPE.VAR_UPDATE);
 		this.value = value;
 		this.name = name;
