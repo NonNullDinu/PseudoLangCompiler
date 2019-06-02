@@ -1,43 +1,10 @@
 begin
-    int a
-    file_stream fl
-    file_stream out
-    int i
-    int n
-    int b
-    pointer arr
-    allocate int, arr, 10
-    open file fl, "pseudo.in", read only
-    open file out, "pseudo.out", write only, 744
-    read file fl, n
-    write n, "\n"
-    for i <- 1, n do
-    begin
-        b <- a
-        read file fl, a
-        arr[i] <- a
-    end
-    write a, " ", b, "\n"
-    swap a, b
-    write a, " ", b, "\n"
-    close file fl
-    for i <- 1, n do
-    begin
-        write file out, arr[i], " "
-    end
-    write file out, "initial", "\n"
-    sort arr+1, n
-    for i <- 1, n do
-    begin
-        write file out, arr[i], " "
-    end
-    write file out, "sortat", "\n"
-    reverse arr+1, arr+n+1
-    for i <- 1, n do
-    begin
-        write file out, arr[i], " "
-    end
-    write file out, "final"
-    close file out
+    int x
+    int p
+    read x
+    prime x, p
+    if (p == 1)
+    then write x, " is prime", "\n"
+    else write x, " is not prime", "\n"
 end
-exit (1+1+1)/4
+exit 0

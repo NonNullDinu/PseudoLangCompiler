@@ -1,7 +1,7 @@
 package tokens;
 
 public enum FILE_ACCESS {
-	READ_ONLY("f_ro_open", "read only", "ro"), WRITE_ONLY("f_wo_open", "write only", "wo");
+	READ_ONLY("_f_ro_open", "read only", "ro"), WRITE_ONLY("_f_wo_open", "write only", "wo");
 	public static FILE_ACCESS last = null;
 	public final String[] type_declarators;
 	private String func_open;

@@ -34,25 +34,29 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 public class _LANG_COMPILER {
-	private static final int OPTMAX = 0;
+	private static final int OPTMAX = 32;
 	public static int strCode = 0;
-	private static final String functions_code = ".extern print_char\n" +
-			".extern printNumber\n" +
-			".extern printNewLine\n" +
-			".extern readValue\n" +
-			".extern readChar\n" +
-			".extern exit\n" +
-			".extern f_ro_open\n" +
-			".extern f_wo_open\n" +
-			".extern f_close\n" +
-			".extern init\n" +
-			".extern sort\n" +
-			".extern reverse_sort\n" +
-			".extern reverse\n" +
-			".extern swap\n" +
-			".extern merge_sort\n";
-	private static final List<VarManager.VAR_> vars = new ArrayList<VarManager.VAR_>();
-	private static final List<VarManager.VAR_> dataVars = new ArrayList<VarManager.VAR_>();
+	private static final String functions_code = ".extern _print_char\n" +
+			".extern _print_number\n" +
+			".extern _print_bin_number\n" +
+			".extern _print_new_line\n" +
+			".extern _read_value\n" +
+			".extern _read_char\n" +
+			".extern _exit\n" +
+			".extern _f_ro_open\n" +
+			".extern _f_wo_open\n" +
+			".extern _f_close\n" +
+			".extern _init\n" +
+			".extern _sort\n" +
+			".extern _reverse_sort\n" +
+			".extern _reverse\n" +
+			".extern _swap\n" +
+			".extern _merge_sort\n" +
+			".extern _prime\n" +
+			".extern _print_string\n" +
+			".extern _div_sum\n";
+	private static final List<VarManager.VAR_> vars = new ArrayList<>();
+	private static final List<VarManager.VAR_> dataVars = new ArrayList<>();
 	private static int tg = 1;
 	private static int cond_code = 0;
 	private static String program_file_name;
@@ -67,8 +71,6 @@ public class _LANG_COMPILER {
 	private static int cache_ptr = 0;
 	public static int rec_ind = 0;
 	public static Map<String, Integer> var_indices = new HashMap<>();
-	private static Map<String, Method> methods = new HashMap<>();
-	private static Map<String, String> localvars = new HashMap<>();
 	private static Map<String, Boolean> registers_constant = new HashMap<>();
 	private static Map<String, Integer> registers_values = new HashMap<>();
 	private static Map<String, REGISTER> registerMap = new HashMap<>();
@@ -81,7 +83,7 @@ public class _LANG_COMPILER {
 	private static Map<String, Boolean> memory_required = new HashMap<>();
 	private static int var_ind = 0;
 	private static final String INDEX_REGISTER = "%rdi";
-	private static String preparations; // NEEDED FOR WORKING WITH ICT AND ARRAYS
+	public static String preparations; // NEEDED FOR WORKING WITH ARRAYS
 
 	public static void addNewVar(String name, String value) {
 		dataVars.add(new VarManager.VAR_(name, DATA_TYPE.STRING, value));
@@ -202,6 +204,7 @@ public class _LANG_COMPILER {
 		optimizationStrategies.add(new OptimizationStrategy("mov(b|w|l|q) (.*), (.*)" + nlr + "mov\\1 \\3, \\2", "mov$1 $3, $2"));//REPLACE MOV a,b MOV b,a with MOV a,b
 		optimizationStrategies.add(new OptimizationStrategy("movq (.*), %r10" + nlr + "movq (.*), %r11" + nlr + "cmp %r11, %r10", "movq %r10, $1" + nl + "cmp $2, %r10"));
 		optimizationStrategies.add(new OptimizationStrategy("movq (.*), %r10" + nlr + "(add|sub|shl|shr)q $(\\d+), %r10" + nlr + "mov \\1, r10", "$2 \\$$3, $1" + nl + "movq %r10, $1"));
+		optimizationStrategies.add(new OptimizationStrategy("push(.?) (.*)" + nlr + "pop\\1? \\2", ""));
 	}
 
 	public static REGISTER reg(String name) {
@@ -251,125 +254,120 @@ public class _LANG_COMPILER {
 	}
 
 	public static class AssemblyMake {
-		private static void makeAssembly() {
-			assembly = new StringBuilder("#DO NOT EDIT\n#THIS FILE IS COMPUTER GENERATED\n#AS A RESULT OF THE COMPILATION OF \"" + program_file_name + "\"\n.section .text\n" + functions_code + "\n\t.globl _start\n_start:\n\tcall init\n");
-			boolean prevdec = true;
-			for (Statement statement : statements) {
-				switch (statement.type) {
-					case VAR_DECLARE:
-						if (!prevdec)
-							throw new ParsingError("Variable \"" + ((VarDeclare_Statement) statement).name + "\" can only be declared at the beginning");
-						VarManager.VAR_ var = new VarManager.VAR_(((VarDeclare_Statement) statement).name, ((VarDeclare_Statement) statement).type);
-						vars.add(var);
-						IdentifierToken.identifiers.forEach((IdentifierToken id) -> {
-							if (id.var == null && var.name.equals(id.identifier)) {
-								id.var = var;
-								id.data_type = var.type;
-							}
-						});
-						String trueName = "var_" + var_ind;
-						memory_values.put(trueName, 0);
-						memory_constant.put(trueName, false);
-						memory_required.put(trueName, true);
-						var_indices.put(var.name, var_ind++);
-						break;
-					case VAR_UPDATE:
-						rec_ind = 0;
-						assembly.append("CLEAR_CACHE\n");
-						assembly.append(valueInstructions(((VarUpdate_Statement) statement).value));
-						if (((VarUpdate_Statement) statement).name instanceof IdentifierToken) {
-							assembly.append("movq %r10, var_").append(var_indices.get(((IdentifierToken) ((VarUpdate_Statement) statement).name).identifier));
-						} else {
-							String v = value(((VarUpdate_Statement) statement).name);
-							assembly.append("\tmovq %r10, %rax\n").append(preparations).append("\tmov %rax, ").append(v).append("\n");
+		private static void appendAssembly(Statement statement, StringBuilder asm) {
+			switch (statement.type) {
+				case VAR_DECLARE: {
+					VarManager.VAR_ var = new VarManager.VAR_(((VarDeclare_Statement) statement).name, ((VarDeclare_Statement) statement).type);
+					vars.add(var);
+					IdentifierToken.identifiers.forEach((IdentifierToken id) -> {
+						if (id.var == null && var.name.equals(id.identifier)) {
+							id.var = var;
+							id.data_type = var.type;
 						}
-						assembly.append("CLEAR_CACHE\n");
-						break;
-					case WHILE_LOOP: {
-						int a = tg++;
-						jumpTrueLabel = "WHILE_" + a;
-						jumpFalseLabel = "WHILE_" + a + "_END";
-						assembly.append("WHILE_").append(a).append(":\n");
-						assembly.append("CLEAR_CACHE\n");
-						assembly.append(conditional(((WhileLoop) statement).conditionTokens));
-						assembly.append("CLEAR_CACHE\n");
-						assembly.append("\tCMPQ $0, %r10\n\tJE .WHILE_").append(a).append("_END\n");
-						assembly.append(assemblyInstructions(new Statements(((WhileLoop) statement).statements.statements), new HashMap<>()));
-						assembly.append("CLEAR_CACHE\n");
-						assembly.append("\tJMP WHILE_").append(a).append("\n");
-						assembly.append("CLEAR_CACHE\n");
-						assembly.append("WHILE_").append(a).append("_END:\n");
-						assembly.append("CLEAR_CACHE\n");
-						prevdec = false;
-						break;
-					}
-					case FOR_LOOP: {
-						int a = tg++;
-						jumpTrueLabel = "WHILE_" + a;
-						jumpFalseLabel = "WHILE_" + a + "_END";
-						assembly.append("CLEAR_CACHE\n");
-						assembly.append(valueInstructions(((ForLoop) statement).forboundtokens[0])).append("\tmovq %r10, var_").append(var_indices.get(((ForLoop) statement).var.identifier)).append("\n");
-						assembly.append("CLEAR_CACHE\n");
-						assembly.append("WHILE_").append(a).append(":\n");
-						assembly.append("CLEAR_CACHE\n");
-						assembly.append(forConditional(((ForLoop) statement).var, ((ForLoop) statement).forboundtokens[1]));
-						assembly.append("\tCMPQ $0, %r10\n\tJE WHILE_").append(a).append("_END\n");
-						assembly.append("CLEAR_CACHE\n");
-						assembly.append(assemblyInstructions(new Statements(((ForLoop) statement).repeat.statements), new HashMap<>()));
-						assembly.append("CLEAR_CACHE\n");
-						assembly.append(valueInstructions(((ForLoop) statement).forboundtokens[2]));
-						assembly.append("CLEAR_CACHE\n");
-						assembly.append("\taddq %r10, var_").append(var_indices.get(((ForLoop) statement).var.identifier)).append("\n");
-						assembly.append("CLEAR_CACHE\n");
-						assembly.append("\tJMP WHILE_").append(a).append("\n");
-						assembly.append("CLEAR_CACHE\n");
-						assembly.append("WHILE_").append(a).append("_END:\n");
-						assembly.append("CLEAR_CACHE\n");
-						prevdec = false;
-						break;
-					}
-					case METHOD_CALL:
-						assembly.append("CLEAR_CACHE\n");
-						assembly.append(((MethodCallStatement) statement).assembly());
-						assembly.append("CLEAR_CACHE\n");
-						break;
-					case CONDITIONAL:
-						cond_code++;
-						int cnd = cond_code;
-						if (((Conditional) statement).onFalse != null) {
-							jumpFalseLabel = "COND_" + cnd + "_FALSE";
-						} else jumpFalseLabel = "COND_" + cnd + "_FINAL_END";
-						jumpTrueLabel = "COND_" + cnd + "_TRUE";
-						assembly.append("CLEAR_CACHE\n");
-						assembly.append(conditional(((Conditional) statement).condition)).append("\nCMPQ $0, %r10\n\tJE COND_").append(cond_code).append(((Conditional) statement).onFalse != null ? "_FALSE" : "_FINAL_END").append("\n");
-						assembly.append("CLEAR_CACHE\n");
-						assembly.append(assemblyInstructions(((Conditional) statement).onTrue, new HashMap<>()));
-						if (((Conditional) statement).onFalse != null) {
-							assembly.append("\n\tJMP COND_").append(cnd).append("_FINAL_END\n").append("COND_").append(cnd).append("_FALSE:\n");
-							assembly.append("CLEAR_CACHE\n");
-							assembly.append(assemblyInstructions(((Conditional) statement).onFalse, new HashMap<>()));
-						}
-						assembly.append("COND_").append(cnd).append("_FINAL_END:\n");
-						assembly.append("CLEAR_CACHE\n");
-						prevdec = false;
-						break;
-					case DO_WHILE: {
-						int a = tg++;
-						jumpTrueLabel = "WHILE_" + a;
-						jumpFalseLabel = "WHILE_" + a + "_END";
-						assembly.append("WHILE_").append(a).append(":\n");
-						assembly.append("CLEAR_CACHE\n");
-						assembly.append(assemblyInstructions(new Statements(((DoWhile) statement).repeat.statements), new HashMap<>()));
-						assembly.append("CLEAR_CACHE\n");
-						assembly.append(conditional(((DoWhile) statement).condtokens));
-						assembly.append("CLEAR_CACHE\n");
-						assembly.append("\tCMPQ $0, %r10\n\tJNE WHILE_").append(a).append("\n");
-						assembly.append("CLEAR_CACHE\n");
-						prevdec = false;
-						break;
-					}
+					});
+					String trueName = "var_" + var_ind;
+					memory_values.put(trueName, 0);
+					memory_constant.put(trueName, false);
+					memory_required.put(trueName, true);
+					var_indices.put(var.name, var_ind++);
+					break;
 				}
-				rec_ind = 0;
+				case VAR_UPDATE: {
+					rec_ind = 0;
+					asm.append("CLEAR_CACHE\n");
+					asm.append(valueInstructions(((VarUpdate_Statement) statement).value));
+					if (((VarUpdate_Statement) statement).name instanceof IdentifierToken) {
+						asm.append("movq %r10, var_").append(var_indices.get(((IdentifierToken) ((VarUpdate_Statement) statement).name).identifier)).append('\n');
+					} else {
+						String v = value(((VarUpdate_Statement) statement).name);
+						asm.append("\tmovq %r10, %rax\n").append(preparations).append("\tmov %rax, ").append(v).append("\n");
+					}
+					asm.append("CLEAR_CACHE\n");
+					break;
+				}
+				case WHILE_LOOP: {
+					int a = tg++;
+					jumpTrueLabel = "WHILE_" + a;
+					jumpFalseLabel = "WHILE_" + a + "_END";
+					asm.append("WHILE_").append(a).append(":\n");
+					asm.append("CLEAR_CACHE\n");
+					asm.append(conditional(((WhileLoop) statement).conditionTokens));
+					asm.append("\tCMPQ $0, %r10\n\tJE WHILE_").append(a).append("_END\n");
+					asm.append("CLEAR_CACHE\n");
+					asm.append(assemblyInstructions(new Statements(((WhileLoop) statement).statements.statements)));
+					asm.append("CLEAR_CACHE\n");
+					asm.append("\tJMP WHILE_").append(a).append("\n");
+					asm.append("CLEAR_CACHE\n");
+					asm.append("WHILE_").append(a).append("_END:\n");
+					asm.append("CLEAR_CACHE\n");
+					break;
+				}
+				case FOR_LOOP: {
+					int a = tg++;
+					jumpTrueLabel = "WHILE_" + a;
+					jumpFalseLabel = "WHILE_" + a + "_END";
+					asm.append(valueInstructions(((ForLoop) statement).forboundtokens[0])).append("\tmovq %r10, var_").append(var_indices.get(((ForLoop) statement).var.identifier)).append("\n");
+					asm.append("WHILE_").append(a).append(":\n");
+					asm.append("CLEAR_CACHE\n");
+					asm.append(forConditional(((ForLoop) statement).var, ((ForLoop) statement).forboundtokens[1]));
+					asm.append("\tCMPQ $0, %r10\n\tJE WHILE_").append(a).append("_END\n");
+					asm.append("CLEAR_CACHE\n");
+					asm.append(assemblyInstructions(new Statements(((ForLoop) statement).repeat.statements)));
+					asm.append("CLEAR_CACHE\n");
+					asm.append(valueInstructions(((ForLoop) statement).forboundtokens[2]));
+					asm.append("\taddq %r10, var_").append(var_indices.get(((ForLoop) statement).var.identifier)).append("\n");
+					asm.append("\tJMP WHILE_").append(a).append("\n");
+					asm.append("CLEAR_CACHE\n");
+					asm.append("WHILE_").append(a).append("_END:\n");
+					asm.append("CLEAR_CACHE\n");
+					break;
+				}
+				case METHOD_CALL:
+					asm.append("CLEAR_CACHE\n");
+					asm.append(((MethodCallStatement) statement).assembly());
+					asm.append("CLEAR_CACHE\n");
+					break;
+				case CONDITIONAL:
+					cond_code++;
+					int cnd = cond_code;
+					if (((Conditional) statement).onFalse != null) {
+						jumpFalseLabel = "COND_" + cnd + "_FALSE";
+					} else jumpFalseLabel = "COND_" + cnd + "_FINAL_END";
+					jumpTrueLabel = "COND_" + cnd + "_TRUE";
+					asm.append("CLEAR_CACHE\n");
+					asm.append(conditional(((Conditional) statement).condition)).append("\nCMPQ $0, %r10\n\tJE COND_").append(cond_code).append(((Conditional) statement).onFalse != null ? "_FALSE" : "_FINAL_END").append("\n");
+					asm.append("CLEAR_CACHE\n");
+					asm.append("#COND_").append(cnd).append("_TRUE:\n").append(assemblyInstructions(((Conditional) statement).onTrue));
+					if (((Conditional) statement).onFalse != null) {
+						asm.append("\n\tJMP COND_").append(cnd).append("_FINAL_END\n");
+						asm.append("COND_").append(cnd).append("_FALSE:\n");
+						asm.append("CLEAR_CACHE\n");
+						asm.append(assemblyInstructions(((Conditional) statement).onFalse));
+					}
+					asm.append("COND_").append(cnd).append("_FINAL_END:\n");
+					asm.append("CLEAR_CACHE\n");
+					break;
+
+				case DO_WHILE: {
+					int a = tg++;
+					jumpTrueLabel = "WHILE_" + a;
+					jumpFalseLabel = "WHILE_" + a + "_END";
+					asm.append("WHILE_").append(a).append(":\n");
+					asm.append("CLEAR_CACHE\n");
+					asm.append(assemblyInstructions(new Statements(((DoWhile) statement).repeat.statements)));
+					asm.append("CLEAR_CACHE\n");
+					asm.append(conditional(((DoWhile) statement).condtokens));
+					asm.append("\tCMPQ $0, %r10\n\tJNE WHILE_").append(a).append("\n");
+					break;
+				}
+			}
+			rec_ind = 0;
+		}
+
+		private static void makeAssembly() {
+			assembly = new StringBuilder("#DO NOT EDIT\n#THIS FILE IS COMPUTER GENERATED\n#AS A RESULT OF THE COMPILATION OF \"" + program_file_name + "\"\n.section .text\n" + functions_code + "\n\t.globl _start\n_start:\n\tcall _init\n");
+			for (Statement statement : statements) {
+				appendAssembly(statement, assembly);
 			}
 			StringBuilder asm_vars = new StringBuilder(".section .bss\n\t.lcomm INTERNAL____CACHE, 524288\n");
 			for (VarManager.VAR_ var : vars) {
@@ -388,124 +386,10 @@ public class _LANG_COMPILER {
 			return valueInstructions(conditionTokens);
 		}
 
-		private static String assemblyInstructions(Statements statements, Map<String, VarManager.VAR_> localvars) {
+		private static String assemblyInstructions(Statements statements) {
 			StringBuilder asm = new StringBuilder();
-			boolean prevdec = true;
-			Map<String, VarManager.VAR_> localvars_ = new HashMap<>(localvars);
 			for (Statement statement : statements) {
-				switch (statement.type) {
-					case VAR_DECLARE: {
-						if (!prevdec)
-							throw new ParsingError("Variable \"" + ((VarDeclare_Statement) statement).name + "\" can only be declared at the beginning");
-						VarManager.VAR_ var = new VarManager.VAR_(((VarDeclare_Statement) statement).name, ((VarDeclare_Statement) statement).type);
-						vars.add(var);
-						IdentifierToken.identifiers.forEach((IdentifierToken id) -> {
-							if (id.var == null && var.name.equals(id.identifier)) {
-								id.var = var;
-								id.data_type = var.type;
-							}
-						});
-						String trueName = "var_" + var_ind;
-						memory_values.put(trueName, 0);
-						memory_constant.put(trueName, false);
-						memory_required.put(trueName, true);
-						var_indices.put(var.name, var_ind++);
-						break;
-					}
-					case VAR_UPDATE: {
-						rec_ind = 0;
-						asm.append("CLEAR_CACHE\n");
-						asm.append(valueInstructions(((VarUpdate_Statement) statement).value));
-						asm.append("CLEAR_CACHE\n");
-						String v = value(((VarUpdate_Statement) statement).name);
-						asm.append("\tmovq %r10, %rax\n").append(preparations).append("\tmovq %rax, ").append(v).append("\n");
-						asm.append("CLEAR_CACHE\n");
-						break;
-					}
-					case WHILE_LOOP: {
-						int a = tg++;
-						jumpTrueLabel = "WHILE_" + a;
-						jumpFalseLabel = "WHILE_" + a + "_END";
-						asm.append("WHILE_").append(a).append(":\n");
-						asm.append("CLEAR_CACHE\n");
-						asm.append(conditional(((WhileLoop) statement).conditionTokens));
-						asm.append("CLEAR_CACHE\n");
-						asm.append("\tCMPQ $0, %r10\n\tJE .WHILE_").append(a).append("_END\n");
-						asm.append("CLEAR_CACHE\n");
-						asm.append(assemblyInstructions(new Statements(((WhileLoop) statement).statements.statements), new HashMap<>()));
-						asm.append("CLEAR_CACHE\n");
-						asm.append("\tJMP .WHILE_").append(a).append("\n");
-						asm.append("CLEAR_CACHE\n");
-						asm.append("WHILE_").append(a).append("_END:\n");
-						asm.append("CLEAR_CACHE\n");
-						prevdec = false;
-						break;
-					}
-					case FOR_LOOP: {
-						int a = tg++;
-						jumpTrueLabel = "WHILE_" + a;
-						jumpFalseLabel = "WHILE_" + a + "_END";
-						asm.append(valueInstructions(((ForLoop) statement).forboundtokens[0])).append("\tmovq %r10, var_").append(var_indices.get(((ForLoop) statement).var.identifier)).append("\n");
-						asm.append("WHILE_").append(a).append(":\n");
-						asm.append("CLEAR_CACHE\n");
-						asm.append(forConditional(((ForLoop) statement).var, ((ForLoop) statement).forboundtokens[1]));
-						asm.append("CLEAR_CACHE\n");
-						asm.append("\tCMPQ $0, %r10\n\tJE WHILE_").append(a).append("_END\n");
-						asm.append("CLEAR_CACHE\n");
-						asm.append(assemblyInstructions(new Statements(((ForLoop) statement).repeat.statements), new HashMap<>()));
-						asm.append("CLEAR_CACHE\n");
-						asm.append(valueInstructions(((ForLoop) statement).forboundtokens[2]));
-						asm.append("CLEAR_CACHE\n");
-						asm.append("\taddq %r10, var_").append(var_indices.get(((ForLoop) statement).var.identifier)).append("\n");
-						asm.append("\tJMP WHILE_").append(a).append("\n");
-						asm.append("CLEAR_CACHE\n");
-						asm.append("WHILE_").append(a).append("_END:\n");
-						asm.append("CLEAR_CACHE\n");
-						prevdec = false;
-						break;
-					}
-					case METHOD_CALL:
-						asm.append("CLEAR_CACHE\n");
-						asm.append(((MethodCallStatement) statement).assembly());
-						asm.append("CLEAR_CACHE\n");
-						break;
-					case CONDITIONAL:
-						cond_code++;
-						int cnd = cond_code;
-						if (((Conditional) statement).onFalse != null) {
-							jumpFalseLabel = "COND_" + cnd + "_FALSE";
-						} else jumpFalseLabel = "COND_" + cnd + "_FINAL_END";
-						jumpTrueLabel = "COND_" + cnd + "_TRUE";
-						asm.append("CLEAR_CACHE\n");
-						asm.append(conditional(((Conditional) statement).condition)).append("\nCMPQ $0, %r10\n\tJE COND_").append(cond_code).append(((Conditional) statement).onFalse != null ? "_FALSE" : "_FINAL_END").append("\n");
-						asm.append("CLEAR_CACHE\n");
-						asm.append("#COND_").append(cnd).append("_TRUE:\n").append(assemblyInstructions(((Conditional) statement).onTrue, localvars_));
-						if (((Conditional) statement).onFalse != null) {
-							asm.append("\n\tJMP COND_").append(cnd).append("_FINAL_END\n");
-							asm.append("COND_").append(cnd).append("_FALSE:\n");
-							asm.append("CLEAR_CACHE\n");
-							asm.append(assemblyInstructions(((Conditional) statement).onFalse, localvars_));
-						}
-						asm.append("COND_").append(cnd).append("_FINAL_END:\n");
-						asm.append("CLEAR_CACHE\n");
-						prevdec = false;
-						break;
-
-					case DO_WHILE: {
-						int a = tg++;
-						jumpTrueLabel = "WHILE_" + a;
-						jumpFalseLabel = "WHILE_" + a + "_END";
-						asm.append("WHILE_").append(a).append(":\n");
-						asm.append("CLEAR_CACHE\n");
-						asm.append(assemblyInstructions(new Statements(((DoWhile) statement).repeat.statements), new HashMap<>()));
-						asm.append(conditional(((DoWhile) statement).condtokens));
-						asm.append("CLEAR_CACHE\n");
-						asm.append("\tCMPQ $0, %r10\n\tJNE WHILE_").append(a).append("\n");
-						prevdec = false;
-						break;
-					}
-				}
-				rec_ind = 0;
+				appendAssembly(statement, asm);
 			}
 			return asm.toString();
 		}
@@ -524,9 +408,7 @@ public class _LANG_COMPILER {
 				cache_ptr = 0;
 			}
 			int depth = rec_ind++;
-			boolean constant = true;
-			for (int i = 0; i < valueTokens.length && constant; i++)
-				constant = !(valueTokens[i] instanceof IdentifierToken || valueTokens[i] instanceof INTERNAL____CACHE_TOKEN || valueTokens[i] instanceof ArrayIdentifier);
+			boolean constant = isConstant(valueTokens);
 			if (constant) {
 				if (depth == 0)
 					return "\tmovq $" + Objects.requireNonNull(evaluate(valueTokens)).vi + ", %r10\n";
@@ -759,7 +641,7 @@ public class _LANG_COMPILER {
 			}
 		}
 
-		private static String value(Token token) {
+		public static String value(Token token) {
 			if (token instanceof NumberToken)
 				return "$" + ((NumberToken) token).v;
 			else if (token instanceof IdentifierToken) {
@@ -771,15 +653,20 @@ public class _LANG_COMPILER {
 				return ((LogicConstantValueToken) token).v ? "$1" : "$0";
 			else if (token instanceof ArrayIdentifier) {
 				rec_ind = 0;
-				preparations = valueInstructions(((ArrayIdentifier) token).indexTokens) + "\tmovq %r10, " + INDEX_REGISTER + "\n";
-				return "var_" + var_indices.get(((ArrayIdentifier) token).array.name) + "(," + INDEX_REGISTER + "," + ((ArrayIdentifier) token).array.type.bytesize + ")";
+				if (isConstant(((ArrayIdentifier) token).indexTokens))
+					return "var_" + var_indices.get(((ArrayIdentifier) token).array.name) + "+" + (8 * evaluate(((ArrayIdentifier) token).indexTokens).vi);
+				else {
+					preparations = valueInstructions(((ArrayIdentifier) token).indexTokens) + "\tmovq %r10, " + INDEX_REGISTER + "\n";
+					return "var_" + var_indices.get(((ArrayIdentifier) token).array.name) + "(," + INDEX_REGISTER + "," + ((ArrayIdentifier) token).array.type.bytesize + ")";
+				}
 			} else return "";
 		}
 
-		private static String printIdentifier(Token token) {
-			if (token instanceof IdentifierToken) {
-				return "\tmovq " + ((IdentifierToken) token).identifier + ", %rax\n\tcall printNumber\n\tcall printNewLine\n";
-			} else return "\n";
+		private static boolean isConstant(Token[] t) {
+			boolean constant = true;
+			for (int i = 0; i < t.length && constant; i++)
+				constant = !(t[i] instanceof IdentifierToken || t[i] instanceof INTERNAL____CACHE_TOKEN || t[i] instanceof ArrayIdentifier);
+			return constant;
 		}
 
 		public static Value evaluate(Token[] valueTokens) {
@@ -967,7 +854,7 @@ public class _LANG_COMPILER {
 					if (check2.contains(INDEX_REGISTER) && !check2.equals(INDEX_REGISTER) && prevop.arg2.value.equals(INDEX_REGISTER)) {
 						check2 = check2.replaceAll(INDEX_REGISTER, prevop.arg1.value.replace("$", ""));
 					}
-					if (asmop.OP.matches("^mov(zx|sb)?(.?)$")) {
+					if (asmop.OP.matches("^mov(zx)?(.?)$")) {
 						operand.value_is_constant = isConstant(check);
 						if (operand.value_is_constant) {
 							operand.value = "$" + cvalue(check);
@@ -1004,30 +891,29 @@ public class _LANG_COMPILER {
 						setConstant("%rdx", false, 0);
 					} else if (asmop.OP.equals("call")) {
 						switch (asmop.arg1.value) {
-							case "readValue":
+							case "_read_value":
 								setConstant("%rax", false, 0);
 								break;
 						}
 					}
 				}
 			}
-			for (ASMOP operation : OPERATIONS) operation.print();
 			for (int i = OPERATIONS.size() - 1; i >= 0; i--) {
 				ASMOP op = OPERATIONS.get(i);
 				if (op.isLabel || op.isJump) {
 					for (String reg : register_required.keySet())
-						register_required.replace(reg, true);
+						register_required.put(reg, true);
 					for (String memloc : memory_required.keySet())
-						memory_required.replace(memloc, true);
+						memory_required.put(memloc, true);
 					continue;
 				} else if (op.OP.equals("CLEAR_CACHE")) {
 					for (String memloc : memory_required.keySet())
 						if (memloc.startsWith("INTERNAL____CACHE"))
-							memory_required.replace(memloc, false);
+							memory_required.put(memloc, false);
 					OPERATIONS.remove(i);
 					continue;
 				}
-				if (op.OP.matches("^mov(zx|sb)?(.?)$")) {
+				if (op.OP.matches("^mov(zx)?(.?)$")) {
 					String check = op.arg1.value;
 					String check2 = op.arg2.value;
 					ASMOP prevop = OPERATIONS.get(i - 1);
@@ -1042,8 +928,6 @@ public class _LANG_COMPILER {
 					}
 					if ((op.comment == null || !(op.comment.equals("POINTER") || op.comment.equals("NO_DELETE"))) && !isRequired(check2)) {
 						OPERATIONS.remove(i);
-						System.out.println("::" + check2 + " " + memory_required.toString());
-//					op.print();
 						continue;
 					}
 					setrequired(check2, false);
@@ -1065,7 +949,6 @@ public class _LANG_COMPILER {
 					}
 					if ((op.comment == null || !(op.comment.equals("POINTER") || op.comment.equals("NO_DELETE"))) && !isRequired(check2)) {
 						OPERATIONS.remove(i);
-//					op.print();
 						continue;
 					}
 					setrequired(check2, false);
@@ -1094,30 +977,36 @@ public class _LANG_COMPILER {
 					setrequiredreg(op.arg2.value, true);
 				} else if (op.OP.equals("call")) {
 					switch (op.arg1.value) {
-						case "print_char":
-						case "printNumber":
+						case "_print_char":
+						case "_print_number":
 							setrequiredreg("%rax", true);
 							setrequiredreg("%r8", true);
 							break;
-						case "readValue":
+						case "_read_value":
 							setrequiredreg("%r8", true);
 							break;
-						case "exit":
-						case "f_close":
-						case "f_ro_open":
+						case "_exit":
+						case "_f_close":
+						case "_f_ro_open":
 							setrequiredreg("%rax", true);
 							break;
-						case "f_wo_open":
-						case "sort":
+						case "_f_wo_open":
+						case "_sort":
+						case "_print_string":
 							setrequiredreg("%rax", true);
 							setrequiredreg("%rbx", true);
 							break;
-						case "swap":
+						case "_swap":
 							setrequiredreg("%rcx", true);
 							setrequiredreg("%rdx", true);
-						case "merge_sort":
+							break;
+						case "_merge_sort":
 							setrequiredreg("%rsi", true);
 							setrequiredreg("%rdi", true);
+							break;
+						case "_div_sum":
+							setrequiredreg("%rbx", true);
+							break;
 					}
 				} else if (op.OP.startsWith("push")) {
 					setrequired(op.arg1.value, true);
@@ -1205,7 +1094,6 @@ public class _LANG_COMPILER {
 			if (register.matcher(name).matches()) {
 				return register_required.get(name.substring(1));
 			} else if (name.matches("^var_\\d+$") || name.startsWith("INTERNAL____CACHE+")) {
-				System.out.println(name + memory_required.toString());
 				return (memory_required.containsKey(name) && memory_required.get(name));
 			} else return name.matches("^var_\\d+\\(.*(" + regs.replaceAll(" ", "|") + ").*\\)");
 		}
@@ -1213,8 +1101,6 @@ public class _LANG_COMPILER {
 		private static void setrequired(String name, boolean required) {
 			if (NumberToken.isAsmImmediate(name))
 				return;
-			if (name.startsWith("INTERNAL____CACHE"))
-				System.out.println(name + ", " + required);
 			if (register.matcher(name).matches()) {
 				setrequiredreg(name.substring(1), required);
 			} else {
@@ -1402,11 +1288,19 @@ public class _LANG_COMPILER {
 						j++;
 					indObj.ind = j + 1;
 					Statements onTrue = nextInstruction(t, indObj), onFalse = null;
-					while (t[indObj.ind] instanceof NewLineToken)
-						indObj.ind++;
-					if (t[indObj.ind] instanceof ElseToken) {
-						indObj.ind++;
-						onFalse = nextInstruction(t, indObj);
+					if (indObj.ind < t.length) {
+						boolean lookForElse = true;
+						while (t[indObj.ind] instanceof NewLineToken) {
+							indObj.ind++;
+							if (indObj.ind == t.length) {
+								lookForElse = false;
+								break;
+							}
+						}
+						if (lookForElse && t[indObj.ind] instanceof ElseToken) {
+							indObj.ind++;
+							onFalse = nextInstruction(t, indObj);
+						}
 					}
 					ind.ind = indObj.ind;
 					return new Statement[]{new Conditional(condition, onTrue, onFalse)};
@@ -1450,11 +1344,9 @@ public class _LANG_COMPILER {
 				}
 				case METHOD_CALL: {
 					String methodName = ((IdentifierToken) t[ind.ind]).identifier.toUpperCase();
-					METHOD m = methods.containsKey(methodName) ? METHOD.DEFINED_METHOD : METHOD.valueOf(methodName);
-					Method def_m = methods.get(methodName);
+					METHOD m = METHOD.valueOf(methodName);
 					Token[][] params = callParameterTokens(t, ind);
 					MethodCallStatement mcs = new MethodCallStatement(m, params);
-					mcs.def_m = def_m;
 					return new Statement[]{mcs};
 				}
 				case FOR_LOOP: {
@@ -1621,6 +1513,10 @@ public class _LANG_COMPILER {
 			else if (value.equals(">>")) return new OperatorToken(OperatorToken.Math_Operator.SHIFT_RIGHT);
 			else if (value.equals("!=") || value.equals("<>"))
 				return new OperatorToken(OperatorToken.Math_Operator.LOGIC_NE);
+			else if (value.equals("|"))
+				return new OperatorToken(OperatorToken.Math_Operator.BITWISE_OR);
+			else if (value.equals("&"))
+				return new OperatorToken(OperatorToken.Math_Operator.BITWISE_AND);
 			else if (value.equals("(")) return new ParenthesisOpenedToken();
 			else if (value.equals(")")) return new ParenthesisClosedToken();
 			else if (value.matches("^(int|float|intreg|real|pointer)$")) return new TypeToken(value);
@@ -1660,7 +1556,7 @@ public class _LANG_COMPILER {
 				s = s.substring(1);
 			if (s.startsWith("\n"))
 				return "\n";
-			if (s.matches("^([(\\-+*%/)]|&&|and|si|\\|\\||or|sau|\\^|==|>=|>|<=|!=|!|<>|<<|>>)(.|\\n)*$")) {
+			if (s.matches("^([(\\-+*%/)]|&&|&|and|si|\\|\\||or|sau|\\||\\^|==|>=|>|<=|!=|!|<>|<<|>>)(.|\\n)*$")) {
 				if (s.matches("^(&&|\\|\\||==|>=|<=|!=|<>|<<|>>)(.|\\n)*$"))
 					return s.substring(0, 2);
 				else if (s.startsWith("and"))

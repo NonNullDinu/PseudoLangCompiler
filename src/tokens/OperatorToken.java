@@ -111,7 +111,7 @@ public class OperatorToken extends Token {
 					if (bvalue && pow2)
 						asm = "shr $" + log_int + ", %" + a + "\n";
 					else
-						asm = "movl %" + _LANG_COMPILER.reg(a).addressing.x32.name + ", %eax\n\tmovl $0, %edx\n\tdiv %" + _LANG_COMPILER.reg(b).addressing.x32.name + "\n\tmovl %eax, %" + _LANG_COMPILER.reg(a).addressing.x32.name + "\n";
+						asm = "movq %" + _LANG_COMPILER.reg(a).addressing.x64.name + ", %rax\n\tmovq $0, %rdx\n\tdiv %" + _LANG_COMPILER.reg(b).addressing.x64.name + "\n\tmovq %rax, %" + _LANG_COMPILER.reg(a).addressing.x64.name + "\n";
 					break;
 				}
 				case MULTIPLY:
@@ -124,31 +124,31 @@ public class OperatorToken extends Token {
 					if (bvalue && pow2)
 						asm = "and $" + (bv - 1) + ", %" + a;
 					else
-						asm = "movl %" + _LANG_COMPILER.reg(a).addressing.x32.name + ", %eax\n\tmovl $0, %edx\n\tdiv %" + _LANG_COMPILER.reg(b).addressing.x32.name + "\n\tmovl %edx, %" + _LANG_COMPILER.reg(a).addressing.x32.name + "\n";
+						asm = "movq %" + _LANG_COMPILER.reg(a).addressing.x64.name + ", %rax\n\tmovq $0, %rdx\n\tdiv %" + _LANG_COMPILER.reg(b).addressing.x64.name + "\n\tmovq %rdx, %" + _LANG_COMPILER.reg(a).addressing.x64.name + "\n";
 					break;
 				case LOGIC_E:
 					++LOGIC_TAG;
-					asm = "cmpq %" + b + ", %" + a + "\n\tmovq $0, %" + a + "\njne .LOGIC_" + (LOGIC_TAG) + "\n\tmovq $1, %" + a + "\n.LOGIC_" + LOGIC_TAG + ":\n";
+					asm = "cmpq %" + b + ", %" + a + "\n\tmovq $0, %" + a + "\njne LOGIC_" + (LOGIC_TAG) + "\n\tmovq $1, %" + a + "\nLOGIC_" + LOGIC_TAG + ":\n";
 					break;
 				case LOGIC_NE:
 					++LOGIC_TAG;
-					asm = "cmpq %" + b + ", %" + a + "\n\tmovq $0, %" + a + "\nje .LOGIC_" + (LOGIC_TAG) + "\n\tmovq $1, %" + a + "\n.LOGIC_" + LOGIC_TAG + ":\n";
+					asm = "cmpq %" + b + ", %" + a + "\n\tmovq $0, %" + a + "\nje LOGIC_" + (LOGIC_TAG) + "\n\tmovq $1, %" + a + "\nLOGIC_" + LOGIC_TAG + ":\n";
 					break;
 				case LOGIC_S:
 					++LOGIC_TAG;
-					asm = "cmpq %" + b + ", %" + a + "\n\tmovq $0, %" + a + "\njge .LOGIC_" + (LOGIC_TAG) + "\n\tmovq $1, %" + a + "\n.LOGIC_" + LOGIC_TAG + ":\n";
+					asm = "cmpq %" + b + ", %" + a + "\n\tmovq $0, %" + a + "\njge LOGIC_" + (LOGIC_TAG) + "\n\tmovq $1, %" + a + "\nLOGIC_" + LOGIC_TAG + ":\n";
 					break;
 				case LOGIC_SE:
 					++LOGIC_TAG;
-					asm = "cmpq %" + b + ", %" + a + "\n\tmovq $0, %" + a + "\njg .LOGIC_" + (LOGIC_TAG) + "\n\tmovq $1, %" + a + "\n.LOGIC_" + LOGIC_TAG + ":\n";
+					asm = "cmpq %" + b + ", %" + a + "\n\tmovq $0, %" + a + "\njg LOGIC_" + (LOGIC_TAG) + "\n\tmovq $1, %" + a + "\nLOGIC_" + LOGIC_TAG + ":\n";
 					break;
 				case LOGIC_G:
 					++LOGIC_TAG;
-					asm = "cmpq %" + b + ", %" + a + "\n\tmovq $0, %" + a + "\njle .LOGIC_" + (LOGIC_TAG) + "\n\tmovq $1, %" + a + "\n.LOGIC_" + LOGIC_TAG + ":\n";
+					asm = "cmpq %" + b + ", %" + a + "\n\tmovq $0, %" + a + "\njle LOGIC_" + (LOGIC_TAG) + "\n\tmovq $1, %" + a + "\nLOGIC_" + LOGIC_TAG + ":\n";
 					break;
 				case LOGIC_GE:
 					++LOGIC_TAG;
-					asm = "cmpq %" + b + ", %" + a + "\n\tmovq $0, %" + a + "\njl .LOGIC_" + (LOGIC_TAG) + "\n\tmovq $1, %" + a + "\n.LOGIC_" + LOGIC_TAG + ":\n";
+					asm = "cmpq %" + b + ", %" + a + "\n\tmovq $0, %" + a + "\njl LOGIC_" + (LOGIC_TAG) + "\n\tmovq $1, %" + a + "\nLOGIC_" + LOGIC_TAG + ":\n";
 					break;
 				case LOGIC_AND:
 					asm = "and %" + a + ", %" + b + "\n\tand $1, %" + a + "\n";
@@ -172,13 +172,13 @@ public class OperatorToken extends Token {
 						asm = "mov cl, " + _LANG_COMPILER.reg(b).addressing.x8.name + "\n\tshr " + a + ", cl\n";
 					break;
 				case BITWISE_AND:
-					asm = "and " + a + ", " + b + "\n";
+					asm = "and %" + b + ", %" + a + "\n";
 					break;
 				case BITWISE_OR:
-					asm = "or " + a + ", " + b + "\n";
+					asm = "or %" + b + ", %" + a + "\n";
 					break;
 				case BITWISE_XOR:
-					asm = "xor " + a + ", " + b + "\n";
+					asm = "xor %" + b + ", %" + a + "\n";
 					break;
 			}
 			return "\t" + asm;

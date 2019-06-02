@@ -18,50 +18,46 @@
     .lcomm MERGE_MEMORY,            524288
 
 .section .rodata
-    __exc:
-        .asciz                      "An exception occured: "
-    __exc_len:
-        .long                       23
-    const10:
-        .word                       10
-    digits:
-        .byte                       48, 49, 50, 51, 52, 53, 54, 55, 56, 57
-    new_line:
-        .byte                       10
-    __exit:
-        .asciz                      "Process finished with exit code "
-    __exit_len:
-        .long                       33
+    __exc: .ascii                   "An exception occured: "
+.equ __exc_len,                     22
+    digits: .byte                   48, 49, 50, 51, 52, 53, 54, 55, 56, 57
+    new_line: .byte                 10
+    __exit: .ascii                  "Process finished with exit code "
+.equ __exit_len,                    32
+
 .section .text
 
-.global init
-.type init, @function
-init:
+.global                             _init
+.type                               _init, @function
+_init:
 movq   $0x0, INTERNAL____READ_PTR
 movq   $0x0, INTERNAL____READ_PTR+8
 retq
 
-.global exception
-.type exception, @function
-exception:
+.global                             _exception
+.type                               _exception, @function
+_exception:
+.cfi_startproc
 negq    %rax
 pushq   %rax
 movq    $SYS_WRITE, %rax
 movq    $STDERR, %rdi
 movq    $__exc, %rsi
-movq    __exc_len, %rdx
+movq    $__exc_len, %rdx
 syscall
 movq    (%rsp), %rax
 movl    $2, %r8d
-call    printNumber
-call    printNewLine
+call    _print_number
+call    _print_new_line
 popq    %rax
-call    exit
+call    _exit
 retq
+.cfi_endproc
 
-.global print_char
-.type print_char, @function
-print_char:
+.global                             _print_char
+.type                               _print_char, @function
+_print_char:
+.cfi_startproc
 movq    %rax, %rsi
 movq    $SYS_WRITE, %rax
 movq    %r8, %rdi
@@ -71,14 +67,16 @@ syscall
 popq    %r8
 or      %rax,%rax
 jns     print_char.l1
-call    exception
+call    _exception
 print_char.l1:
 mov     %rsi,%rax
 ret
+.cfi_endproc
 
-.global printNumber
-.type printNumber, @function
-printNumber:
+.global                             _print_number
+.type                               _print_number, @function
+_print_number:
+.cfi_startproc
 pushq   %rax
 pushq   %rdx
 xor     %edx,%edx
@@ -86,17 +84,39 @@ movq    $10, %r15
 idiv    %r15d
 test    %eax,%eax
 je      printNumber.l1
-call    printNumber
+call    _print_number
 printNumber.l1:
 leaq    digits(%rdx), %rax
-call    print_char
+call    _print_char
 popq    %rdx
 popq    %rax
 retq
+.cfi_endproc
 
-.global printNewLine
-.type printNewLine, @function
-printNewLine:
+.global                             _print_bin_number
+.type                               _print_bin_number, @function
+_print_bin_number:
+.cfi_startproc
+pushq   %rax
+pushq   %rdx
+movq    %rax, %rdx
+and     $1, %rdx
+shr     $1, %rax
+test    %rax,%rax
+je      printBinNumber.l1
+call    _print_bin_number
+printBinNumber.l1:
+leaq    digits(%rdx), %rax
+call    _print_char
+popq    %rdx
+popq    %rax
+retq
+.cfi_endproc
+
+.global                             _print_new_line
+.type                               _print_new_line, @function
+_print_new_line:
+.cfi_startproc
 movq    $SYS_WRITE, %rax
 movq    %r8, %rdi
 movq    $new_line, %rsi
@@ -104,13 +124,15 @@ movq    $1, %rdx
 syscall
 or      %rax,%rax
 jns     printNewLine.l1
-call    exception
+call    _exception
 printNewLine.l1:
 retq
+.cfi_endproc
 
-.global readValue
-.type readValue, @function
-readValue:
+.global                             _read_value
+.type                               _read_value, @function
+_read_value:
+.cfi_startproc
 movq    INTERNAL____READ_PTR, %r11
 movq    INTERNAL____READ_PTR+8, %r12
 cmpq    %r12,%r11
@@ -122,7 +144,7 @@ movq    $65536, %rdx
 syscall
 or      %rax,%rax
 jns     readValue.l2
-call    exception
+call    _exception
 readValue.l2:
 movq    %rax,%rbx
 cmpq    $STDIN, %r8
@@ -164,10 +186,12 @@ je      readValue.l6
 readValue.l7:
 movq    %r10, INTERNAL____READ_PTR
 retq
+.cfi_endproc
 
-.global readChar
-.type readChar, @function
-readChar:
+.global                             _read_char
+.type                               _read_char, @function
+_read_char:
+.cfi_startproc
 movq    INTERNAL____READ_PTR, %r11
 movq    INTERNAL____READ_PTR+8, %r12
 cmpq    %r12, %r11
@@ -179,7 +203,7 @@ movq    $1, %rdx
 syscall
 or      %rax,%rax
 jns     readChar.l2
-call    exception
+call    _exception
 readChar.l2:
 movq    %rax,%rbx
 cmpq    $STDIN, %r8
@@ -196,12 +220,13 @@ movzxb  INTERNAL____READ(%r10),%rax
 incq    %r10
 movq    %r10, INTERNAL____READ_PTR
 retq
+.cfi_endproc
 
-.global f_ro_open
-.type f_ro_open, @function
-f_ro_open:
+.global                             _f_ro_open
+.type                               _f_ro_open, @function
+_f_ro_open:
+.cfi_startproc
 movq    $0, %rsi
-movq    %rbx, %rdx
 movq    %rax, %rdi
 movq    $SYS_OPEN, %rax
 syscall
@@ -209,12 +234,14 @@ cmpq    $0, %rax
 jl      f_ro_open.l1
 retq
 f_ro_open.l1:
-call    exception
+call    _exception
 retq
+.cfi_endproc
 
-.global f_wo_open
-.type f_wo_open, @function
-f_wo_open:
+.global                             _f_wo_open
+.type                               _f_wo_open, @function
+_f_wo_open:
+.cfi_startproc
 movq    $577, %rsi # O_TRUNC | O_CREAT | O_WRONLY
 movq    %rbx, %rdx
 movq    %rax, %rdi
@@ -224,33 +251,39 @@ cmpq    $0x0, %rax
 jl      f_wo_open.l1
 retq
 f_wo_open.l1:
-call    exception
+call    _exception
 retq
+.cfi_endproc
 
-.global f_close
-.type f_close, @function
-f_close:
+.global                             _f_close
+.type                               _f_close, @function
+_f_close:
+.cfi_startproc
 movq    %rax, %rdi
 movq    $SYS_CLOSE, %rax
 syscall
 or      %rax, %rax
 jns     f_close.l1
-call    exception
+call    _exception
 f_close.l1:
 retq
+.cfi_endproc
 
-.global swap
-.type swap, @function
-swap:
+.global                             _swap
+.type                               _swap, @function
+_swap:
+.cfi_startproc
 movq    (%rcx), %r9
 movq    (%rdx), %r8
 movq    %r8, (%rcx)
 movq    %r9, (%rdx)
 retq
+.cfi_endproc
 
-.global sort
-.type sort, @function
-sort:
+.global                             _sort
+.type                               _sort, @function
+_sort:
+.cfi_startproc
 subq    %rax, %rbx
 sort.l1:
 movq    $0x1, %r10
@@ -261,7 +294,7 @@ cmpq    -8(%rax, %r10, 8), %r8
 jge     sort.l3
 leaq    (%rax, %r10, 8), %rcx
 leaq    -8(%rcx), %rdx
-call    swap
+call    _swap
 movq    $0x1, %r11
 sort.l3:
 incq    %r10
@@ -270,10 +303,12 @@ jl      sort.l2
 cmpq    $0x0, %r11
 jne     sort.l1
 retq
+.cfi_endproc
 
-.global reverse_sort
-.type reverse_sort, @function
-reverse_sort:
+.global                             _reverse_sort
+.type                               _reverse_sort, @function
+_reverse_sort:
+.cfi_startproc
 movq    $0x0, %r11
 subq    %rax,%rbx
 reverse_sort.l1:
@@ -285,7 +320,7 @@ cmpq    -0x8(%rax, %r10, 8), %r8
 jle     reverse_sort.l3
 leaq    (%rax, %r10, 8), %rcx
 leaq    -0x8(%rax, %r10, 8), %rdx
-call    swap
+call    _swap
 movq    $0x1, %r11
 reverse_sort.l3:
 incq    %r10
@@ -294,10 +329,12 @@ jl      reverse_sort.l2
 cmpq    $0x0, %r11
 jne     reverse_sort.l1
 retq
+.cfi_endproc
 
-.global reverse
-.type reverse, @function
-reverse:
+.global                             _reverse
+.type                               _reverse, @function
+_reverse:
+.cfi_startproc
 # rax = begin in memory
 # rbx = begin in memory + size + 1
 movq    %rax, %rcx
@@ -306,233 +343,125 @@ subq    %rax, %rbx# rbx = size
 leaq    (,%rbx,8), %rbx# rbx = size in memory
 leaq    (%rax, %rbx), %rdx# rdx = end in memory
 reverse.l1:
-call    swap # swaps rcx and rdx
+call    _swap # swaps rcx and rdx
 addq    $0x8, %rcx
 subq    $0x8, %rdx
 cmpq    %rdx, %rcx
 jl      reverse.l1
 retq
+.cfi_endproc
 
-.global exit
-.type exit, @function
-exit:
+.global                             _exit
+.type                               _exit, @function
+_exit:
+.cfi_startproc
 pushq   %rax
-movq    $STDOUT, %r8
 movq    $SYS_WRITE, %rax
 movq    $STDOUT, %rdi
 movq    $__exit, %rsi
-movq    __exit_len, %rdx
+movq    $__exit_len, %rdx
 syscall
 movq    (%rsp), %rax
-call    printNumber
-call    printNewLine
+movq    $STDOUT, %r8
+call    _print_number
+call    _print_new_line
 movq    $SYS_EXIT, %rax
 popq    %rdi
 syscall
 retq
+.cfi_endproc
 
-        # COMPILED C CODE
-        # ONWARD
-        .globl  merge
-        .type   merge, @function
-merge:
-.LFB6:
-        .cfi_startproc
-        pushq   %rbp
-        .cfi_def_cfa_offset 16
-        .cfi_offset 6, -16
-        movq    %rsp, %rbp
-        .cfi_def_cfa_register 6
-        pushq   %r14
-        pushq   %r13
-        pushq   %r12
-        pushq   %rbx
-        .cfi_offset 14, -24
-        .cfi_offset 13, -32
-        .cfi_offset 12, -40
-        .cfi_offset 3, -48
-        movq    %rsi, %rax
-        movl    $0, %r12d
-        movl    $0, %r13d
-        movl    $0, %ebx
-        leaq    MERGE_MEMORY(%rip), %r14
-        jmp     .L2
-.L5:
-        movq    %r12, %rsi
-        salq    $3, %rsi
-        addq    %rdi, %rsi
-        movq    (%rsi), %r8
-        movq    %r13, %rsi
-        salq    $3, %rsi
-        addq    %rax, %rsi
-        movq    (%rsi), %rsi
-        cmpq    %rsi, %r8
-        jge     .L3
-        movq    %r12, %rsi
-        leaq    1(%rsi), %r12
-        salq    $3, %rsi
-        leaq    (%rdi,%rsi), %r9
-        movq    %rbx, %rsi
-        leaq    1(%rsi), %rbx
-        salq    $3, %rsi
-        leaq    (%r14,%rsi), %r8
-        movq    (%r9), %rsi
-        movq    %rsi, (%r8)
-        jmp     .L2
-.L3:
-        movq    %r13, %rsi
-        leaq    1(%rsi), %r13
-        salq    $3, %rsi
-        leaq    (%rax,%rsi), %r9
-        movq    %rbx, %rsi
-        leaq    1(%rsi), %rbx
-        salq    $3, %rsi
-        leaq    (%r14,%rsi), %r8
-        movq    (%r9), %rsi
-        movq    %rsi, (%r8)
-.L2:
-        cmpq    %rdx, %r12
-        jge     .L4
-        cmpq    %rcx, %r13
-        jl      .L5
-.L4:
-        cmpq    %rdx, %r12
-        jne     .L10
-        jmp     .L7
-.L8:
-        movq    %r13, %rsi
-        leaq    1(%rsi), %r13
-        salq    $3, %rsi
-        leaq    (%rax,%rsi), %r9
-        movq    %rbx, %rsi
-        leaq    1(%rsi), %rbx
-        salq    $3, %rsi
-        leaq    (%r14,%rsi), %r8
-        movq    (%r9), %rsi
-        movq    %rsi, (%r8)
-.L7:
-        cmpq    %rcx, %r13
-        jl      .L8
-        jmp     .L9
-.L11:
-        movq    %r12, %rsi
-        leaq    1(%rsi), %r12
-        salq    $3, %rsi
-        leaq    (%rdi,%rsi), %r9
-        movq    %rbx, %rsi
-        leaq    1(%rsi), %rbx
-        salq    $3, %rsi
-        leaq    (%r14,%rsi), %r8
-        movq    (%r9), %rsi
-        movq    %rsi, (%r8)
-.L10:
-        cmpq    %rdx, %r12
-        jl      .L11
-.L9:
-        movl    $0, %ebx
-        movl    $0, %r12d
-        jmp     .L12
-.L13:
-        movq    %rbx, %rsi
-        leaq    1(%rsi), %rbx
-        salq    $3, %rsi
-        addq    %r14, %rsi
-        movq    %r12, %r8
-        salq    $3, %r8
-        addq    %rdi, %r8
-        movq    (%rsi), %rsi
-        movq    %rsi, (%r8)
-        addq    $1, %r12
-.L12:
-        cmpq    %rdx, %r12
-        jl      .L13
-        movl    $0, %r13d
-        jmp     .L14
-.L15:
-        movq    %rbx, %rdx
-        leaq    1(%rdx), %rbx
-        salq    $3, %rdx
-        addq    %r14, %rdx
-        movq    %r13, %rsi
-        salq    $3, %rsi
-        addq    %rax, %rsi
-        movq    (%rdx), %rdx
-        movq    %rdx, (%rsi)
-        addq    $1, %r13
-.L14:
-        cmpq    %rcx, %r13
-        jl      .L15
-        nop
-        popq    %rbx
-        popq    %r12
-        popq    %r13
-        popq    %r14
-        popq    %rbp
-        .cfi_def_cfa 7, 8
-        ret
-        .cfi_endproc
-.LFE6:
-        .size   merge, .-merge
+.global                             _print_string
+.type                               _print_string, @function
+_print_string:
+# rax = address of first char
+# rbx = size
+# r8 = target file descriptor
+movq    %r8, %rdi
+movq    %rax, %rsi
+movq    %rbx, %rdx
+pushq   %r8
+movq    $SYS_WRITE, %rax
+syscall
+popq    %r8
+or %rax, %rax
+jns printString.l1
+call _exception
+printString.l1:
+retq
 
-        .globl  merge_sort
-        .type   merge_sort, @function
-merge_sort:
-.LFB7:
-        .cfi_startproc
-        pushq   %rbp
-        .cfi_def_cfa_offset 16
-        .cfi_offset 6, -16
-        movq    %rsp, %rbp
-        .cfi_def_cfa_register 6
-        pushq   %r14
-        pushq   %r13
-        pushq   %r12
-        pushq   %rbx
-        .cfi_offset 14, -24
-        .cfi_offset 13, -32
-        .cfi_offset 12, -40
-        .cfi_offset 3, -48
-        movq    %rdi, %r13
-        movq    %rsi, %r12
-        cmpq    $1, %r12
-        jle     .L19
-        movq    %r12, %rax
-        shrq    $63, %rax
-        addq    %r12, %rax
-        sarq    %rax
-        movq    %rax, %rbx
-        movq    %rbx, %rax
-        salq    $3, %rax
-        leaq    0(%r13,%rax), %r14
-        movq    %rbx, %rsi
-        movq    %r13, %rdi
-        call    merge_sort
-        movq    %r12, %rdx
-        subq    %rbx, %rdx
-        movq    %rbx, %rax
-        salq    $3, %rax
-        addq    %r13, %rax
-        movq    %rdx, %rsi
-        movq    %rax, %rdi
-        call    merge_sort
-        movq    %r12, %rax
-        subq    %rbx, %rax
-        movq    %rax, %rcx
-        movq    %rbx, %rdx
-        movq    %r14, %rsi
-        movq    %r13, %rdi
-        call    merge
-        jmp     .L16
-.L19:
-        nop
-.L16:
-        popq    %rbx
-        popq    %r12
-        popq    %r13
-        popq    %r14
-        popq    %rbp
-        .cfi_def_cfa 7, 8
-        ret
-        .cfi_endproc
-.LFE7:
-        .size   merge_sort, .-merge_sort
+## Template:
+# .globl <name>
+# .type <name>, @function
+# <name>:
+#   .cfi_startproc
+#   <code>
+#   .cfi_endproc
+
+.globl _prime
+.type _prime, @function
+_prime:
+.cfi_startproc
+#rax = value
+cmpq    $2, %rax
+jl _prime.false # 0 and 1
+cmpq    $4, %rax
+jl _prime.true # 2 and 3
+movq %rax, %r10
+andq $1, %r10
+jz _prime.false # if arg & 1 == 0 then arg is odd
+movq    %rax, %rbx
+movq    $0, %rdx
+movq    $6, %r10
+idiv    %r10
+cmpq    $1, %rdx
+je _prime.l2
+cmpq    $5, %rdx
+je _prime.l2
+jmp _prime.false # except for 2 and 3, there is no prime that cannot be written as 6n+1 or 6n-1
+_prime.l2:
+movq    $3, %r10 # i
+_prime.l1:
+movq    %r10, %rax
+xorq    %rdx, %rdx
+imul    %r10
+cmpq    %rbx, %rax
+jg  _prime.true # i * i > arg
+movq    %rbx, %rax
+movq    $0, %rdx
+idiv    %r10
+cmpq    $0, %rdx
+je _prime.false # arg % i == 0
+addq    $2, %r10
+jmp _prime.l1
+_prime.true:
+movq $1, %rax
+retq
+_prime.false:
+movq $0, %rax
+retq
+.cfi_endproc
+.size _prime, .-_prime
+
+.global                             _div_sum
+.type                               _div_sum, @function
+_div_sum:
+.cfi_startproc
+# rbx = arg
+# rcx = return value
+movq $1, %rcx
+movq $2, %rdi # i
+_div_sum.l1:
+movq %rbx, %rax
+xorq %rdx, %rdx
+div  %rdi
+test %rdx, %rdx
+jne _div_sum.l2
+addq %rdi, %rcx
+_div_sum.l2:
+incq %rdi
+cmpq %rbx, %rdi
+jle  _div_sum.l1
+retq
+.cfi_endproc
+.size                               _div_sum, .-_div_sum
