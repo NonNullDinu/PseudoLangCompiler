@@ -128,11 +128,18 @@ public enum METHOD {
 			FILE_ACCESS_TOKEN access = ((FILE_ACCESS_TOKEN) argTokens[2][0]);
 			_LANG_COMPILER.addNewVar("file_" + ++_LANG_COMPILER.fileCode + "_path", ".asciz " + file);
 			if (access.access.equals(FILE_ACCESS.WRITE_ONLY)) {
-				int perm = ((NumberToken) argTokens[3][0]).v;
-				asm = "\tmovq $file_" + _LANG_COMPILER.fileCode + "_path, %rax\n" +
-						"\tmovq $0" + perm + ", %rbx\n" +
-						"\tcall " + access.access.func_open() + "\n" +
-						"\tmovw %ax, var_" + _LANG_COMPILER.var_indices.get(name.identifier) + "//NO_DELETE\n";
+				if (argTokens.length >= 4) {
+					int perm = ((NumberToken) argTokens[3][0]).v;
+					asm = "\tmovq $file_" + _LANG_COMPILER.fileCode + "_path, %rax\n" +
+							"\tmovq $0" + perm + ", %rbx\n" +
+							"\tcall " + access.access.func_open() + "\n" +
+							"\tmovw %ax, var_" + _LANG_COMPILER.var_indices.get(name.identifier) + "//NO_DELETE\n";
+				} else {
+					asm = "\tmovq $file_" + _LANG_COMPILER.fileCode + "_path, %rax\n" +
+							"\tmovq $0744, %rbx\n" + // Default is 0744
+							"\tcall " + access.access.func_open() + "\n" +
+							"\tmovw %ax, var_" + _LANG_COMPILER.var_indices.get(name.identifier) + "//NO_DELETE\n";
+				}
 			} else {
 				asm = "\tmovq $file_" + _LANG_COMPILER.fileCode + "_path, %rax\n" +
 						"\tcall " + access.access.func_open() + "\n" +
@@ -194,8 +201,12 @@ public enum METHOD {
 		//2 - idf of result target
 		_LANG_COMPILER.preparations = "";
 		String v = _LANG_COMPILER.AssemblyMake.value(argTokens[1][0]);
-		System.out.println(v);
-		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rbx\n\tcall _div_sum\n" + _LANG_COMPILER.preparations + "\tmovq %rcx, " + v + "\n";
+		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rbx\n\tcall _div_sum\n\tpushq %rcx\n" + _LANG_COMPILER.preparations + "\tpopq %rcx\n\tmovq %rcx, " + v + "\n";
+	}),
+	PERFECT((m, argTokens) -> {
+		_LANG_COMPILER.preparations = "";
+		String v = _LANG_COMPILER.AssemblyMake.value(argTokens[1][0]);
+		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rax\n\tcall _perfect\n\tpushq %rax\n" + _LANG_COMPILER.preparations + "\tpopq %rax\n\tmovq %rax, " + v + "\n";
 	});
 	private CALLBACK callback;
 

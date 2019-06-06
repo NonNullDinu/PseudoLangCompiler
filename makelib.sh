@@ -19,4 +19,4 @@ for fl in *.s ; do
 done
 echo "Successfully compiled"
 ar rcs libstd.a *.o *.o2
-rm *.o
+rm *.o *.o2 *.s

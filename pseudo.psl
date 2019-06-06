@@ -1,10 +1,29 @@
+int n
+int p
+file_stream fout
+int prev
+int dif
+int difmax = 0
+int difmaxn
+int difmaxprev
 begin
-    int x
-    int p
-    read x
-    prime x, p
-    if (p == 1)
-    then write x, " is prime", "\n"
-    else write x, " is not prime", "\n"
+	prev = 2
+	for n <- 3, 1000000, 2 do
+	begin
+		prime n, p
+		if(p) then {
+			dif = n - prev
+			if(dif > difmax) then {
+				difmax = dif
+				difmaxn = n
+				difmaxprev = prev
+			}
+			prev = n
+		}
+	end
+	write difmax, "\n"
+	open file fout, "pseudo.maxdiff.out", write only, 744
+	write file fout, difmax, "\n", difmaxprev, "\n", difmaxn
+	close file fout
 end
 exit 0

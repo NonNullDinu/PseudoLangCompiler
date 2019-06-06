@@ -9,5 +9,7 @@ public class DoWhile extends Statement {
 
 	public DoWhile(Statements repeat, Token[] condtkns) {
 		super(Statement_TYPE.DO_WHILE);
+		this.repeat = repeat;
+		this.condtokens = condtkns;
 	}
 }

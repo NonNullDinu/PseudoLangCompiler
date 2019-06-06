@@ -1,3 +1,18 @@
+ # Copyright (C) 2018-2019  Dinu Blanovschi
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+ # the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ #
+ # This program is distributed in the hope that it will be useful,
+ # but WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ # GNU General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License
+ # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 # SYSCALL numbers
 
 .equ SYS_READ,                      0
@@ -13,16 +28,16 @@
 .equ STDERR,                        2
 
 .section .bss
-    .lcomm INTERNAL____READ_PTR,    16
-    .lcomm INTERNAL____READ,        65536
-    .lcomm MERGE_MEMORY,            524288
+	.lcomm INTERNAL____READ_PTR,    16
+	.lcomm INTERNAL____READ,        65536
+	.lcomm MERGE_MEMORY,            524288
 
 .section .rodata
-    __exc: .ascii                   "An exception occured: "
+	__exc: .ascii                   "An exception occured: "
 .equ __exc_len,                     22
-    digits: .byte                   48, 49, 50, 51, 52, 53, 54, 55, 56, 57
-    new_line: .byte                 10
-    __exit: .ascii                  "Process finished with exit code "
+	digits: .byte                   48, 49, 50, 51, 52, 53, 54, 55, 56, 57
+	new_line: .byte                 10
+	__exit: .ascii                  "Process finished with exit code "
 .equ __exit_len,                    32
 
 .section .text
@@ -384,9 +399,9 @@ pushq   %r8
 movq    $SYS_WRITE, %rax
 syscall
 popq    %r8
-or %rax, %rax
-jns printString.l1
-call _exception
+or      %rax, %rax
+jns     printString.l1
+call    _exception
 printString.l1:
 retq
 
@@ -404,21 +419,21 @@ _prime:
 .cfi_startproc
 #rax = value
 cmpq    $2, %rax
-jl _prime.false # 0 and 1
+jl      _prime.false # 0 and 1
 cmpq    $4, %rax
-jl _prime.true # 2 and 3
-movq %rax, %r10
-andq $1, %r10
-jz _prime.false # if arg & 1 == 0 then arg is odd
+jl      _prime.true # 2 and 3
+movq    %rax, %r10
+andq    $1, %r10
+jz      _prime.false # if arg & 1 == 0 then arg is odd
 movq    %rax, %rbx
 movq    $0, %rdx
 movq    $6, %r10
 idiv    %r10
 cmpq    $1, %rdx
-je _prime.l2
+je      _prime.l2
 cmpq    $5, %rdx
-je _prime.l2
-jmp _prime.false # except for 2 and 3, there is no prime that cannot be written as 6n+1 or 6n-1
+je      _prime.l2
+jmp     _prime.false # except for 2 and 3, there is no prime that cannot be written as 6n+1 or 6n-1
 _prime.l2:
 movq    $3, %r10 # i
 _prime.l1:
@@ -426,19 +441,19 @@ movq    %r10, %rax
 xorq    %rdx, %rdx
 imul    %r10
 cmpq    %rbx, %rax
-jg  _prime.true # i * i > arg
+jg      _prime.true # i * i > arg
 movq    %rbx, %rax
 movq    $0, %rdx
 idiv    %r10
 cmpq    $0, %rdx
-je _prime.false # arg % i == 0
+je      _prime.false # arg % i == 0
 addq    $2, %r10
-jmp _prime.l1
+jmp     _prime.l1
 _prime.true:
-movq $1, %rax
+movq    $1, %rax
 retq
 _prime.false:
-movq $0, %rax
+movq    $0, %rax
 retq
 .cfi_endproc
 .size _prime, .-_prime
@@ -449,19 +464,50 @@ _div_sum:
 .cfi_startproc
 # rbx = arg
 # rcx = return value
-movq $1, %rcx
-movq $2, %rdi # i
+movq    $1, %rcx
+movq    $2, %rdi # i
 _div_sum.l1:
-movq %rbx, %rax
-xorq %rdx, %rdx
-div  %rdi
-test %rdx, %rdx
-jne _div_sum.l2
-addq %rdi, %rcx
+movq    %rbx, %rax
+xorq    %rdx, %rdx
+div     %rdi
+test    %rdx, %rdx
+jne     _div_sum.l2
+addq    %rdi, %rcx
 _div_sum.l2:
-incq %rdi
-cmpq %rbx, %rdi
-jle  _div_sum.l1
+incq    %rdi
+cmpq    %rbx, %rdi
+jle     _div_sum.l1
 retq
 .cfi_endproc
 .size                               _div_sum, .-_div_sum
+
+.global                             _perfect
+.type                               _perfect, @function
+_perfect:
+# rax = value
+movq    %rax, %rbx
+movq    $1, %rcx
+movq    $2, %rdi
+_perfect.l1:
+movq    %rbx, %rax
+xorq    %rdx, %rdx
+div     %rdi
+test    %rdx, %rdx
+jne     _perfect.l2
+add     %rdi, %rcx
+_perfect.l2:
+incq    %rdi
+test    %rdi, %rdi
+je      _perfect.false
+leaq    (,%rdi,2), %rax
+cmpq    %rbx, %rax
+jle     _perfect.l1
+cmpq    %rbx, %rcx
+jne     _perfect.false
+_perfect.true:
+movq    $1, %rax
+retq
+_perfect.false:
+movq    $0, %rax
+retq
+.size                               _perfect, .-_perfect
