@@ -11,12 +11,14 @@ int false <- 0
 begin
 	prev <- 2
 	n <- 3
-	while (!(n > 1000000)) do
-	begin
+	while (!(n > 1000000))
+	do begin
 		prime n, p
-		if(p) then begin
+		if(p)
+		then begin
 			dif <- n - prev
-			if(dif > difmax) then begin
+			if(dif > difmax)
+			then begin
 				difmax <- dif
 				difmaxn <- n
 				difmaxprev <- prev
