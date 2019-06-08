@@ -524,7 +524,6 @@ retq
 
 .ifdef win
 .extern _ExitProcess@8
-.import _ExitProcess@8, kernel32.dll
 .global                             _win_exit
 .type                               _win_exit, @function
 _win_exit:
