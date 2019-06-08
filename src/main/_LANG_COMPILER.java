@@ -76,7 +76,7 @@ public class _LANG_COMPILER {
 			"-", "+", "*", "%", "/", "&&", "&", "and", "si", "||", "or", "sau", "|",
 			"^", ">=", ">>", "!=", "!", ">",
 			"daca", "cat timp", "pentru", "inceput", "sfarsit", "execita",
-			"atunci", "real", "intreg", "repeta", "pana cand", "int"
+			"atunci", "real", "intreg", "repeta", "pana cand", "int", "true", "false"
 	};
 
 	private static String jumpFalseLabel;
@@ -348,6 +348,7 @@ public class _LANG_COMPILER {
 					asm.append("CLEAR_CACHE\n");
 					asm.append(assemblyInstructions(new Statements(((DoWhile) statement).repeat.statements)));
 					asm.append("CLEAR_CACHE\n");
+					rec_ind = 0;
 					asm.append(conditional(((DoWhile) statement).condtokens));
 					asm.append("\tCMPQ $0, %r10\n\tJNE WHILE_").append(a).append("\n");
 					break;
@@ -447,7 +448,7 @@ public class _LANG_COMPILER {
 				if (cnt != 0)
 					throw new InvalidExpressionException(Arrays.deepToString(valueTokens));
 				StringBuilder asm = new StringBuilder();
-
+				boolean parenthesis = false;
 				for (i = valueTokens.length - 1; i >= 0; i--) {
 					if (valueTokens[i] instanceof ParenthesisClosedToken) {
 						int d_ = 1, j;
@@ -469,8 +470,26 @@ public class _LANG_COMPILER {
 						t[j] = new INTERNAL____CACHE_TOKEN(cache_ptr);
 						valueTokens = t;
 						i = j - 1;
+						parenthesis = true;
 					}
 				}
+				if (parenthesis)
+					if (valueTokens.length == 1) {
+						preparations = "";
+						String v = value(valueTokens[0]);
+						return asm.toString() + preparations + "\tmovq " + v + ", %r10\n" + (depth != 0 ? "\tmovq %r10, INTERNAL____CACHE+" + (8 * (cache_ptr = internal_cache_index++)) + "\n" : "");
+					} else if (valueTokens.length == 3) {
+						preparations = "";
+						String val = value(valueTokens[0]);
+						String asm_ = preparations + "\tmovq " + val + ", %r10\n\tpushq %r10\n";
+						preparations = "";
+						val = value(valueTokens[2]);
+						asm_ += preparations + "\tpopq %r10\n\tmovq " + val + ", %r11\n";
+						asm_ += "\t" + ((OperatorToken) valueTokens[1]).asm_code("r10", "r11") + "\n";
+						if (depth != 0)
+							asm_ += "\tmovq %r10, INTERNAL____CACHE+" + (8 * (cache_ptr = internal_cache_index++)) + "\n";
+						return asm.toString() + asm_;
+					}
 
 				for (i = valueTokens.length - 1; i >= 0; i--) {
 					if (valueTokens[i] instanceof OperatorToken)
@@ -600,7 +619,7 @@ public class _LANG_COMPILER {
 						asm.append(valueInstructions(tokens2));
 						asm.append(((UnaryOperatorToken) valueTokens[i]).asm_code("r10"));
 						if (depth != 0)
-							asm.append("\n\tmovq %r10, INTERNAL____CACHE+").append(8 * cache_ptr).append("//COMMENT:18\n");
+							asm.append("\n\tmovq %r10, INTERNAL____CACHE+").append(8 * cache_ptr).append("\n");
 						return asm.toString();
 					}
 				}
@@ -897,6 +916,11 @@ public class _LANG_COMPILER {
 					}
 				}
 			}
+
+			for (ASMOP op :
+					OPERATIONS) {
+				op.print();
+			}
 			for (int i = OPERATIONS.size() - 1; i >= 0; i--) {
 				ASMOP op = OPERATIONS.get(i);
 				if (op.isLabel || op.isJump) {
@@ -925,7 +949,7 @@ public class _LANG_COMPILER {
 						check2 = check2.replaceAll(INDEX_REGISTER, prevop.arg1.value.replace("$", ""));
 						requiresindex = true;
 					}
-					if ((op.comment == null || !(op.comment.equals("POINTER") || op.comment.equals("NO_DELETE"))) && !isRequired(check2)) {
+					if ((op.comment == null || !(op.comment.equals("POINTER") || op.comment.equals("NO_DELETE"))) && isNotRequired(check2)) {
 						OPERATIONS.remove(i);
 						continue;
 					}
@@ -946,7 +970,7 @@ public class _LANG_COMPILER {
 						check2 = check2.replaceAll(INDEX_REGISTER, prevop.arg1.value.replace("$", ""));
 						requiresindex = true;
 					}
-					if ((op.comment == null || !(op.comment.equals("POINTER") || op.comment.equals("NO_DELETE"))) && !isRequired(check2)) {
+					if ((op.comment == null || !(op.comment.equals("POINTER") || op.comment.equals("NO_DELETE"))) && isNotRequired(check2)) {
 						OPERATIONS.remove(i);
 						continue;
 					}
@@ -1125,12 +1149,12 @@ public class _LANG_COMPILER {
 			register_required.replace(ras.x8.name, required);
 		}
 
-		private static boolean isRequired(String name) {
+		private static boolean isNotRequired(String name) {
 			if (register.matcher(name).matches()) {
-				return register_required.get(name.substring(1));
+				return !register_required.get(name.substring(1));
 			} else if (name.matches("^var_\\d+$") || name.startsWith("INTERNAL____CACHE+")) {
-				return (memory_required.containsKey(name) && memory_required.get(name));
-			} else return name.matches("^var_\\d+\\(.*(" + regs.replaceAll(" ", "|") + ").*\\)");
+				return (!memory_required.containsKey(name) || !memory_required.get(name));
+			} else return !name.matches("^var_\\d+\\(.*(" + regs.replaceAll(" ", "|") + ").*\\)");
 		}
 
 		private static void setrequired(String name, boolean required) {
@@ -1354,7 +1378,7 @@ public class _LANG_COMPILER {
 				}
 				case WHILE_LOOP: {
 					int i = ind.ind + 2, j, d = 1;
-					for (j = i + 1; j < t.length; j++) {
+					for (j = i; j < t.length; j++) {
 						if (t[j] instanceof ParenthesisOpenedToken)
 							d++;
 						else if (t[j] instanceof ParenthesisClosedToken) {
@@ -1403,7 +1427,7 @@ public class _LANG_COMPILER {
 						negate = true;
 					} else throw new ParsingError("Token in do while is neither a while token nor an until token");
 					ind.ind++;
-					int i = ind.ind, j, d = 0;
+					int i = ind.ind, j, d = 1;
 					for (j = i + 1; j < t.length; j++) {
 						if (t[j] instanceof ParenthesisOpenedToken)
 							d++;
@@ -1638,17 +1662,6 @@ public class _LANG_COMPILER {
 					v.size = size;
 					return;
 				}
-		}
-
-		public static void addNewVar(String name, byte[] value) {
-			StringBuilder content = new StringBuilder();
-			for (byte b : value)
-				content.append(Byte.toUnsignedInt(b)).append(", ");
-			dataVars.add(new VAR_(name, DATA_TYPE.STRING, content.substring(0, content.length() - 2)));
-		}
-
-		public static void addNewRESWVar(String name) {
-			vars.add(new VarManager.VAR_(name, DATA_TYPE.SHORT_INT));
 		}
 
 		public static class VAR_ {

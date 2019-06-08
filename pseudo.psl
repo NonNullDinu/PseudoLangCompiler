@@ -3,23 +3,27 @@ int p
 file_stream fout
 int prev
 int dif
-int difmax = 0
+int difmax <- 0
 int difmaxn
 int difmaxprev
+int true <- 1
+int false <- 0
 begin
-	prev = 2
-	for n <- 3, 1000000, 2 do
+	prev <- 2
+	n <- 3
+	while (!(n > 1000000)) do
 	begin
 		prime n, p
-		if(p) then {
-			dif = n - prev
-			if(dif > difmax) then {
-				difmax = dif
-				difmaxn = n
-				difmaxprev = prev
-			}
-			prev = n
-		}
+		if(p) then begin
+			dif <- n - prev
+			if(dif > difmax) then begin
+				difmax <- dif
+				difmaxn <- n
+				difmaxprev <- prev
+			end
+			prev <- n
+		end
+		n <- n + 2
 	end
 	write difmax, "\n"
 	open file fout, "pseudo.maxdiff.out", write only, 744

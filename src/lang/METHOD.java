@@ -23,6 +23,7 @@ import tokens.*;
 import java.util.Objects;
 
 public enum METHOD {
+	@SuppressWarnings("unused")
 	EXIT((m, argTokens) -> {
 		if (argTokens != null && argTokens.length > 0) {
 			return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmov %r10, %rax\n\tcall _exit\n";
@@ -30,6 +31,7 @@ public enum METHOD {
 			return "\tmovq $0, %rax\n\tcall _exit\n";
 	}),
 
+	@SuppressWarnings("unused")
 	DEFINED_METHOD((m, argTokens) -> {
 		StringBuilder methodBody = new StringBuilder();
 		if (argTokens != null && argTokens.length != 0)
@@ -43,15 +45,20 @@ public enum METHOD {
 		return methodBody.toString();
 	}),
 
+	@SuppressWarnings("unused")
 	PRINT_DIGIT((m, argTokens) -> {
 		_LANG_COMPILER.rec_ind = 0;
 		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tleaq digits(,%r10,1), %rax\n\tcall _print_char\n";
 	}),
+
+	@SuppressWarnings("unused")
 	ASM((m, argTokens) -> {
 		StringBuilder asm = new StringBuilder();
 		for (Token[] t : argTokens) asm.append(((StringToken) t[0]).str.replaceAll("\"", "")).append('\n');
 		return asm.toString();
 	}),
+
+	@SuppressWarnings("unused")
 	READ((m, argTokens) -> {
 		StringBuilder asm = new StringBuilder();
 		for (int i = 0; i < argTokens.length; i++) {
@@ -70,6 +77,8 @@ public enum METHOD {
 		}
 		return asm.toString();
 	}),
+
+	@SuppressWarnings("unused")
 	WRITE((m, argTokens) -> {
 		StringBuilder asm = new StringBuilder();
 
@@ -87,6 +96,8 @@ public enum METHOD {
 					if (str == null) {
 						_LANG_COMPILER.addNewVar("str_" + ++_LANG_COMPILER.strCode, ".asciz " + ((StringToken) a[0]).str);
 						str = _LANG_COMPILER.lookupStringVar(".asciz " + ((StringToken) a[0]).str);
+						if (str == null)
+							throw new RuntimeException("Could not create variable");
 					}
 					asm.append("\tmovq $").append(str.name).append(", %rax\n\tmovq $").append(((StringToken) a[0]).str.length() - 2).append(", %rbx\n\tcall _print_string\n");
 				} else
@@ -100,6 +111,8 @@ public enum METHOD {
 		}
 		return asm.toString();
 	}),
+
+	@SuppressWarnings("unused")
 	PRINT_BINARY((m, argTokens) -> {
 		StringBuilder asm = new StringBuilder();
 
@@ -116,6 +129,8 @@ public enum METHOD {
 		}
 		return asm.toString();
 	}),
+
+	@SuppressWarnings("unused")
 	OPEN(((m, argTokens) -> {
 		String asm = "";
 		if (argTokens[0][0] instanceof FILE_TOKEN) {
@@ -148,6 +163,8 @@ public enum METHOD {
 		}
 		return asm;
 	})),
+
+	@SuppressWarnings("unused")
 	CLOSE(((m, argTokens) -> {
 		if (argTokens[0][0] instanceof FILE_TOKEN) {
 			return "\tmovzxw var_" + _LANG_COMPILER.var_indices.get(((IdentifierToken) argTokens[0][1]).identifier) + ", %rax\n" +
@@ -155,6 +172,8 @@ public enum METHOD {
 		}
 		return "";
 	})),
+
+	@SuppressWarnings("unused")
 	ALLOCATE((m, argTokens) -> {
 		//argTokens[0] type
 		//argTokens[1] name(of type pointer)
@@ -167,6 +186,8 @@ public enum METHOD {
 		_LANG_COMPILER.VarManager.setVarSize(((IdentifierToken) argTokens[1][0]).identifier, Objects.requireNonNull(_LANG_COMPILER.AssemblyMake.evaluate(argTokens[2])).vi);
 		return "";
 	}),
+
+	@SuppressWarnings("unused")
 	SORT(((m, argTokens) -> {
 		//BEGIN
 		_LANG_COMPILER.rec_ind = 0;
@@ -176,6 +197,8 @@ public enum METHOD {
 		String v2 = _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[1]) + "\tmovq %r10, %rsi\n";
 		return v1 + v2 + "\tpopq %rdi\n\tcall _merge_sort\n";
 	})),
+
+	@SuppressWarnings("unused")
 	REVERSE_SORT(((m, argTokens) -> {
 		//BEGIN
 		_LANG_COMPILER.rec_ind = 0;
@@ -185,6 +208,8 @@ public enum METHOD {
 		String v2 = _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[1]) + "\tmovq %r10, %rbx\n";
 		return v1 + v2 + "\tpopq %rax\n\tcall _reverse_sort\n";
 	})),
+
+	@SuppressWarnings("unused")
 	REVERSE(((m, argTokens) -> {
 		//BEGIN
 		_LANG_COMPILER.rec_ind = 0;
@@ -194,8 +219,14 @@ public enum METHOD {
 		String v2 = _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[1]) + "\tmovq %r10, %rbx\n";
 		return v1 + v2 + "\tpopq %rax\n\tcall _reverse\n";
 	})),
+
+	@SuppressWarnings("unused")
 	SWAP((m, argTokens) -> "\tmovq $var_" + _LANG_COMPILER.var_indices.get(((IdentifierToken) argTokens[0][0]).identifier) + ", %rcx\n\tmovq $var_" + _LANG_COMPILER.var_indices.get(((IdentifierToken) argTokens[1][0]).identifier) + ", %rdx\n\tcall _swap\n"),
+
+	@SuppressWarnings("unused")
 	PRIME((m, argTokens) -> _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rax\n\tcall _prime\n\tmovq %rax, " + _LANG_COMPILER.AssemblyMake.value(argTokens[1][0]) + "\n"),
+
+	@SuppressWarnings("unused")
 	DIV_SUM((m, argTokens) -> {
 		//1 - value
 		//2 - idf of result target
@@ -203,6 +234,8 @@ public enum METHOD {
 		String v = _LANG_COMPILER.AssemblyMake.value(argTokens[1][0]);
 		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rbx\n\tcall _div_sum\n\tpushq %rcx\n" + _LANG_COMPILER.preparations + "\tpopq %rcx\n\tmovq %rcx, " + v + "\n";
 	}),
+
+	@SuppressWarnings("unused")
 	PERFECT((m, argTokens) -> {
 		_LANG_COMPILER.preparations = "";
 		String v = _LANG_COMPILER.AssemblyMake.value(argTokens[1][0]);

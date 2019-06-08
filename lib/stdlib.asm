@@ -55,11 +55,9 @@ _exception:
 .cfi_startproc
 negq    %rax
 pushq   %rax
-movq    $SYS_WRITE, %rax
-movq    $STDERR, %rdi
-movq    $__exc, %rsi
-movq    $__exc_len, %rdx
-syscall
+movq    $__exc, %rax
+movq    $__exc_len, %rbx
+call    _print_string
 movq    (%rsp), %rax
 movl    $2, %r8d
 call    _print_number
@@ -78,12 +76,9 @@ movq    $SYS_WRITE, %rax
 movq    %r8, %rdi
 movq    $1, %rdx
 pushq   %r8
-syscall
+call    _make_syscall
 popq    %r8
-or      %rax,%rax
-jns     print_char.l1
-call    _exception
-print_char.l1:
+call    _exception_if_rax_negative
 mov     %rsi,%rax
 ret
 .cfi_endproc
@@ -132,17 +127,31 @@ retq
 .type                               _print_new_line, @function
 _print_new_line:
 .cfi_startproc
-movq    $SYS_WRITE, %rax
-movq    %r8, %rdi
-movq    $new_line, %rsi
-movq    $1, %rdx
-syscall
-or      %rax,%rax
-jns     printNewLine.l1
-call    _exception
-printNewLine.l1:
+movq    $new_line, %rax
+movq    $1, %rbx
+call    _print_string
+call    _exception_if_rax_negative
 retq
 .cfi_endproc
+
+.type                               _internal_read, @function
+_internal_read:
+movq    %rax, %rdx
+movq    $SYS_READ, %rax
+movq    %r8, %rdi
+movq    $INTERNAL____READ, %rsi
+call    _make_syscall
+call    _exception_if_rax_negative
+retq
+
+.global                             _exception_if_rax_negative
+.type                               _exception_if_rax_negative, @function
+_exception_if_rax_negative:
+or      %rax, %rax
+jns     _exception_if_rax_negative.l1
+call    _exception
+_exception_if_rax_negative.l1:
+retq
 
 .global                             _read_value
 .type                               _read_value, @function
@@ -152,15 +161,8 @@ movq    INTERNAL____READ_PTR, %r11
 movq    INTERNAL____READ_PTR+8, %r12
 cmpq    %r12,%r11
 jl      readValue.l1
-movq    $SYS_READ, %rax
-movq    %r8, %rdi
-movq    $INTERNAL____READ, %rsi
-movq    $65536, %rdx
-syscall
-or      %rax,%rax
-jns     readValue.l2
-call    _exception
-readValue.l2:
+movq    $65536, %rax
+call    _internal_read
 movq    %rax,%rbx
 cmpq    $STDIN, %r8
 jne     readValue.l3
@@ -211,15 +213,9 @@ movq    INTERNAL____READ_PTR, %r11
 movq    INTERNAL____READ_PTR+8, %r12
 cmpq    %r12, %r11
 jl      readChar.l1
-movq    $SYS_READ, %rax
-movq    %r8, %rdi
-movq    $INTERNAL____READ, %rsi
-movq    $1, %rdx
-syscall
-or      %rax,%rax
-jns     readChar.l2
-call    _exception
-readChar.l2:
+movq    $1, %rax
+call    _internal_read
+call    _exception_if_rax_negative
 movq    %rax,%rbx
 cmpq    $STDIN, %r8
 jne     readChar.l3
@@ -244,7 +240,7 @@ _f_ro_open:
 movq    $0, %rsi
 movq    %rax, %rdi
 movq    $SYS_OPEN, %rax
-syscall
+call    _make_syscall
 cmpq    $0, %rax
 jl      f_ro_open.l1
 retq
@@ -261,7 +257,7 @@ movq    $577, %rsi # O_TRUNC | O_CREAT | O_WRONLY
 movq    %rbx, %rdx
 movq    %rax, %rdi
 movq    $SYS_OPEN, %rax
-syscall
+call    _make_syscall
 cmpq    $0x0, %rax
 jl      f_wo_open.l1
 retq
@@ -276,11 +272,8 @@ _f_close:
 .cfi_startproc
 movq    %rax, %rdi
 movq    $SYS_CLOSE, %rax
-syscall
-or      %rax, %rax
-jns     f_close.l1
-call    _exception
-f_close.l1:
+call    _make_syscall
+call    _exception_if_rax_negative
 retq
 .cfi_endproc
 
@@ -371,18 +364,17 @@ retq
 _exit:
 .cfi_startproc
 pushq   %rax
-movq    $SYS_WRITE, %rax
-movq    $STDOUT, %rdi
-movq    $__exit, %rsi
-movq    $__exit_len, %rdx
-syscall
+movq    $STDOUT, %r8
+movq    $__exit, %rax
+movq    $__exit_len, %rbx
+call    _print_string
 movq    (%rsp), %rax
 movq    $STDOUT, %r8
 call    _print_number
 call    _print_new_line
 movq    $SYS_EXIT, %rax
 popq    %rdi
-syscall
+call    _make_syscall
 retq
 .cfi_endproc
 
@@ -397,7 +389,7 @@ movq    %rax, %rsi
 movq    %rbx, %rdx
 pushq   %r8
 movq    $SYS_WRITE, %rax
-syscall
+call    _make_syscall
 popq    %r8
 or      %rax, %rax
 jns     printString.l1
@@ -511,3 +503,32 @@ _perfect.false:
 movq    $0, %rax
 retq
 .size                               _perfect, .-_perfect
+
+.global                             _make_syscall
+.type                               _make_syscall, @function
+_make_syscall:
+# Makes a simple linux syscall or transforms the linux syscall to one or more winapi calls if the symbol win is defined
+.ifdef win
+# switch (%rax){
+cmpq    $SYS_EXIT, %rax
+jne     _make_syscall.l2
+call    _win_exit # case SYS_EXIT:
+jmp     _make_syscall.l1
+_make_syscall.l2:
+
+_make_syscall.l1:
+.else
+syscall
+.endif
+retq
+
+.ifdef win
+.extern _ExitProcess@8
+.import _ExitProcess@8, kernel32.dll
+.global                             _win_exit
+.type                               _win_exit, @function
+_win_exit:
+pushq   %rbx
+call    _ExitProcess@8
+retq
+.endif

@@ -167,9 +167,9 @@ public class OperatorToken extends Token {
 					break;
 				case SHIFT_RIGHT:
 					if (bvalue)
-						asm = "shl " + a + ", " + bv + "\n";
+						asm = "shl %" + a + ", $" + bv + "\n";
 					else
-						asm = "mov cl, " + _LANG_COMPILER.reg(b).addressing.x8.name + "\n\tshr " + a + ", cl\n";
+						asm = "movb %" + _LANG_COMPILER.reg(b).addressing.x8.name + ", %cl\n\tshr %cl, %" + a + "\n";
 					break;
 				case BITWISE_AND:
 					asm = "and %" + b + ", %" + a + "\n";

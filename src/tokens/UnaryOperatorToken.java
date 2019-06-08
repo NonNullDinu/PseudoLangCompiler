@@ -49,11 +49,11 @@ public class UnaryOperatorToken extends Token {
 			String asm = "";
 			switch (this) {
 				case BITWISE_NOT:
-					asm = "not " + reg;
+					asm = "not %" + reg;
 					break;
 				case LOGIC_NOT:
 					LOGIC_INDEX++;
-					asm = "test " + reg + ", " + reg + "\n\tmov " + reg + ", 1\n\tje LOGIC_NOT_" + LOGIC_INDEX + "\n\tmov " + reg + ", 0\nLOGIC_NOT_" + LOGIC_INDEX + ":";
+					asm = "test %" + reg + ", %" + reg + "\n\tmov $1, %" + reg + "\n\tje LOGIC_NOT_" + LOGIC_INDEX + "\n\tmov $0, %" + reg + "\nLOGIC_NOT_" + LOGIC_INDEX + ":";
 					break;
 			}
 			return "\t" + asm + "\n";
