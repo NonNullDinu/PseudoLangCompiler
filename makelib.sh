@@ -1,22 +1,19 @@
 #!/usr/bin/env bash
 cd lib
-if [[ -f libstd.a ]]; then rm libstd.a; fi
+if [[ -f libstd.so ]]; then rm libstd.so; fi
 for fl in *.asm ; do
     flname="$(basename -- $fl)"
     flname="${flname%.*}"
     as $fl -o "$flname".o
 done
 
-for fl in *.c ; do
-    flname="$(basename -- $fl)"
-    flname="${flname%.*}"
-    gcc -O3 $fl -S
-done
+gcc -O3 -c *.c -S -fPIC
+
 for fl in *.s ; do
     flname="$(basename -- $fl)"
     flname="${flname%.*}"
-    as $fl -o "$flname".o2
+    as "$fl" -o "$flname".o2
 done
 echo "Successfully compiled"
-ar rcs libstd.a *.o *.o2
-rm *.o *.o2 *.s
+gcc -shared -o libstd.so *.o  *.o2
+#rm *.o *.o2

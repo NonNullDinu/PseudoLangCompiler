@@ -64,6 +64,7 @@ public class _LANG_COMPILER {
 	private static int var_ind = 0;
 	private static final String INDEX_REGISTER = "%rdi";
 	public static String preparations; // NEEDED FOR WORKING WITH ARRAYS
+	private static int alignment = 1;
 
 	public static void addNewVar(String name, String value) {
 		dataVars.add(new VarManager.VAR_(name, DATA_TYPE.STRING, value));
@@ -193,12 +194,13 @@ public class _LANG_COMPILER {
 	}
 
 	static {
-		optimizationStrategies.add(new OptimizationStrategy("mov(b|w|l|q)\\s+(.*),\\s+(.*)" + nlr + "push\\1\\s+\\3", "push$1 $2"));//REPLACE MOV a,b PUSH a with PUSH b
+		optimizationStrategies.add(new OptimizationStrategy("mov(b|w|l|q)\\s+(.*),\\s+(.*)" + nlr + "push\\1\\s+\\3", "push$1 $2"));//REPLACE MOV b,a PUSH a with PUSH b
 		optimizationStrategies.add(new OptimizationStrategy("mov(b|w|l|q)\\s+(.*),\\s+(.*)" + nlr + "mov\\1\\s+\\3,\\s+\\2", "mov$1 $2, $3"));//REPLACE MOV a,b MOV b,a with MOV a,b
-		optimizationStrategies.add(new OptimizationStrategy("movq\\s+(.*),\\s+%r10" + nlr + "movq\\s+(.*),\\s+%r11" + nlr + "cmp.?\\s+%r11, %r10", "movq %r10, $1" + nl + "cmp $2, %r10"));
-		optimizationStrategies.add(new OptimizationStrategy("movq\\s+(.*),\\s+%r10" + nlr + "(add|sub|shl|shr)q\\s+$(\\d+),\\s+%r10" + nlr + "mov \\1, r10", "$2 \\$$3, $1" + nl + "movq %r10, $1"));
+		optimizationStrategies.add(new OptimizationStrategy("movq\\s+(.*),\\s+%r10" + nlr + "movq\\s+(.*),\\s+%r11" + nlr + "cmp.?\\s+%r11, %r10", "movq $1, %r10" + nl + "cmp $2, %r10"));
+		optimizationStrategies.add(new OptimizationStrategy("movq\\s+(.*),\\s+%r10" + nlr + "(add|sub|shl|shr)q\\s+$(\\d+),\\s+%r10" + nlr + "mov.? \\1, r10", "$2 \\$$3, $1" + nl + "movq %r10, $1"));
 		optimizationStrategies.add(new OptimizationStrategy("push(.?)\\s+(.*)" + nlr + "pop\\1?\\s+\\2", ""));
 		optimizationStrategies.add(new OptimizationStrategy("movq\\s+\\$(\\d+),\\s+%r11" + nlr + "cmpq\\s+\\$\\1,\\s+%r10", "cmpq \\$$1, %r10"));
+		optimizationStrategies.add(new OptimizationStrategy("movq\\s+\\$(\\d+),\\s+%r10" + nlr + "movq\\s+(\\$\\1|%r10),\\s+var_(.*)", "movq \\$$1, var_$3"));
 	}
 
 	public static REGISTER reg(String name) {
@@ -246,6 +248,7 @@ public class _LANG_COMPILER {
 	}
 
 	public static class AssemblyMake {
+
 		private static void appendAssembly(Statement statement, StringBuilder asm) {
 			switch (statement.type) {
 				case VAR_DECLARE: {
@@ -272,7 +275,7 @@ public class _LANG_COMPILER {
 						asm.append("movq %r10, var_").append(var_indices.get(((IdentifierToken) ((VarUpdate_Statement) statement).name).identifier)).append('\n');
 					} else {
 						String v = value(((VarUpdate_Statement) statement).name);
-						asm.append("\tmovq %r10, %rax\n").append(preparations).append("\tmov %rax, ").append(v).append("\n");
+						asm.append("\tmovq %r10, %rax\n").append(preparations).append("\tmovq %rax, ").append(v).append("\n");
 					}
 					asm.append("CLEAR_CACHE\n");
 					break;
@@ -358,7 +361,7 @@ public class _LANG_COMPILER {
 		}
 
 		private static void makeAssembly() {
-			assembly = new StringBuilder("#DO NOT EDIT\n#THIS FILE IS COMPUTER GENERATED\n#AS A RESULT OF THE COMPILATION OF \"" + program_file_name + "\"\n.section .text\n\t.globl _start\n_start:\n\tcall _init\n");
+			assembly = new StringBuilder("#DO NOT EDIT\n#THIS FILE IS COMPUTER GENERATED\n#AS A RESULT OF THE COMPILATION OF \"" + program_file_name + "\"\n.section .text\n\t.globl main\nmain:\n\tcall _pseudo_stdlib_init@PLT\n");
 			for (Statement statement : statements) {
 				appendAssembly(statement, assembly);
 			}
@@ -408,6 +411,7 @@ public class _LANG_COMPILER {
 			if (rec_ind == 0) {
 				internal_cache_index = 0;
 				cache_ptr = 0;
+				alignment = 1;
 			}
 			int depth = rec_ind++;
 			boolean constant = isConstant(valueTokens);
@@ -642,7 +646,7 @@ public class _LANG_COMPILER {
 					System.err.println("GAS:\n" + msg);
 					System.exit(p.exitValue());
 				}
-				p = Runtime.getRuntime().exec(new String[]{"ld", "-o", target_binary_file, "pseudo.o", "-L./lib", "-lstd"});
+				p = Runtime.getRuntime().exec(new String[]{"ld", "-o", target_binary_file, "-dynamic-linker", "/lib/ld-linux-x86-64.so.2", "/usr/lib/crt1.o", "/usr/lib/crti.o", "-lc", "pseudo.o", "/usr/lib/crtn.o", "-L./lib", "-lstd"});
 				p.waitFor();
 				if (p.exitValue() != 0) {
 					InputStream inr = p.getErrorStream();
@@ -664,21 +668,28 @@ public class _LANG_COMPILER {
 		}
 
 		public static String value(Token token) {
+			preparations = "";
 			if (token instanceof NumberToken)
-				return "$" + ((NumberToken) token).v;
+				return "$" + (((NumberToken) token).v * alignment);
 			else if (token instanceof IdentifierToken) {
 				IdentifierToken idf = ((IdentifierToken) token);
+				if (idf.data_type == DATA_TYPE.POINTER)
+					alignment = idf.var.type.bytesize;
 				return (idf.data_type == DATA_TYPE.POINTER ? "$" : "") + "var_" + var_indices.get(idf.identifier);
 			} else if (token instanceof INTERNAL____CACHE_TOKEN) {
 				return "INTERNAL____CACHE+" + (8 * ((INTERNAL____CACHE_TOKEN) token).qwordoffset);
 			} else if (token instanceof LogicConstantValueToken)
 				return ((LogicConstantValueToken) token).v ? "$1" : "$0";
 			else if (token instanceof ArrayIdentifier) {
-				rec_ind = 0;
 				if (isConstant(((ArrayIdentifier) token).indexTokens))
 					return "var_" + var_indices.get(((ArrayIdentifier) token).array.name) + "+" + (8 * Objects.requireNonNull(evaluate(((ArrayIdentifier) token).indexTokens)).vi);
 				else {
+					int temprecind = rec_ind, inci = internal_cache_index;
+					rec_ind = 0;
 					preparations = valueInstructions(((ArrayIdentifier) token).indexTokens) + "\tmovq %r10, " + INDEX_REGISTER + "\n";
+					rec_ind = temprecind;
+					internal_cache_index = inci;
+					cache_ptr = internal_cache_index - 1;
 					return "var_" + var_indices.get(((ArrayIdentifier) token).array.name) + "(," + INDEX_REGISTER + "," + ((ArrayIdentifier) token).array.type.bytesize + ")";
 				}
 			} else return "";
@@ -912,15 +923,12 @@ public class _LANG_COMPILER {
 					} else if (asmop.OP.equals("call")) {
 						for (String reg : registers_constant.keySet())
 							registers_constant.replace(reg, false);
-						method_required.put(asmop.arg1.value, true);
+						method_required.put(asmop.arg1.value.endsWith("@PLT") ? asmop.arg1.value.substring(0, asmop.arg1.value.indexOf('@')) : asmop.arg1.value, true);
 					}
 				}
 			}
 
-			for (ASMOP op :
-					OPERATIONS) {
-				op.print();
-			}
+			for (ASMOP op : OPERATIONS) op.print();
 			for (int i = OPERATIONS.size() - 1; i >= 0; i--) {
 				ASMOP op = OPERATIONS.get(i);
 				if (op.isLabel || op.isJump) {
@@ -1000,36 +1008,36 @@ public class _LANG_COMPILER {
 					setrequiredreg(op.arg2.value, true);
 				} else if (op.OP.equals("call")) {
 					switch (op.arg1.value) {
-						case "_print_char":
-						case "_print_number":
+						case "_print_char@PLT":
+						case "_print_number@PLT":
 							setrequiredreg("%rax", true);
 							setrequiredreg("%r8", true);
 							break;
-						case "_read_value":
+						case "_read_value@PLT":
 							setrequiredreg("%r8", true);
 							break;
-						case "_exit":
-						case "_f_close":
-						case "_f_ro_open":
-						case "_prime":
-						case "_perfect":
+						case "_exit@PLT":
+						case "_f_close@PLT":
+						case "_f_ro_open@PLT":
+						case "_prime@PLT":
+						case "_perfect@PLT":
 							setrequiredreg("%rax", true);
 							break;
-						case "_f_wo_open":
-						case "_sort":
-						case "_print_string":
+						case "_f_wo_open@PLT":
+						case "_sort@PLT":
+						case "_print_string@PLT":
 							setrequiredreg("%rax", true);
 							setrequiredreg("%rbx", true);
 							break;
-						case "_swap":
+						case "_swap@PLT":
 							setrequiredreg("%rcx", true);
 							setrequiredreg("%rdx", true);
 							break;
-						case "_merge_sort":
+						case "_merge_sort@PLT":
 							setrequiredreg("%rsi", true);
 							setrequiredreg("%rdi", true);
 							break;
-						case "_div_sum":
+						case "_div_sum@PLT":
 							setrequiredreg("%rbx", true);
 							break;
 					}
@@ -1049,11 +1057,10 @@ public class _LANG_COMPILER {
 				}
 			}
 			for (int opt = 0; opt < OPT_MAX; opt++)
-				for (int i = OPERATIONS.size() - 1; i >= 2; i--) {
+				for (int i = OPERATIONS.size() - 1; i >= 1; i--) {
 					ASMOP op = OPERATIONS.get(i);
 					ASMOP op1 = OPERATIONS.get(i - 1);
-					ASMOP op2 = OPERATIONS.get(i - 2);
-					if (op.isLabel || op1.isLabel || op2.isLabel)
+					if (op.isLabel || op1.isLabel)
 						continue;
 					if (op.OP.startsWith("pop") && op1.OP.startsWith("push")) {
 						if (op.arg1.value.equals(op1.arg1.value)) {
@@ -1061,18 +1068,11 @@ public class _LANG_COMPILER {
 							OPERATIONS.remove(i - 1);
 						}
 					}
-					if (op.OP.startsWith("mov") && op1.OP.startsWith("mov") && op2.OP.startsWith("cmp")) {
-						boolean rem_a = false, rem_b = false;
-						if (op.arg1.value.equals(op2.arg1.value)) {
-							op2.arg1.value = op.arg2.value;
-							rem_a = true;
+					if (op.OP.startsWith("mov") && op1.OP.startsWith("mov")) {
+						if (op1.arg2.value.equals(op.arg1.value) && op1.arg2.value.startsWith("%") && ((op.arg2.value.startsWith("%")) || (op1.arg1.value.startsWith("%") || op1.arg1.value.startsWith("$")))) {
+							op.arg1.value = op1.arg1.value;
+							OPERATIONS.remove(i - 1);
 						}
-						if (op1.arg1.value.equals(op2.arg2.value)) {
-							op2.arg2.value = op1.arg2.value;
-							rem_b = true;
-						}
-						if (rem_b) OPERATIONS.remove(i - 1);
-						if (rem_a) OPERATIONS.remove(i - 2);
 					}
 				}
 
@@ -1588,6 +1588,7 @@ public class _LANG_COMPILER {
 			else if (value.equals("}") || value.equals("end") || value.equals("sfarsit"))
 				return new CompositeInstructionEndToken();
 			else if (value.matches("^\\d+$")) return new NumberToken(Integer.parseInt(value));
+			else if (value.matches("^true|false$")) return new LogicConstantValueToken(value.equals("true"));
 			else if (value.startsWith("\"") && value.endsWith("\"")) return new StringToken(value);
 			else if (value.equals(",")) return new CommaToken();
 			else if (value.equals("else") || value.equals("altfel")) return new ElseToken();

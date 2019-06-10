@@ -27,26 +27,25 @@
 .equ STDOUT,                        1
 .equ STDERR,                        2
 
-.section .bss
-	.lcomm INTERNAL____READ_PTR,    16
-	.lcomm INTERNAL____READ,        65536
-	.lcomm MERGE_MEMORY,            524288
-
-.section .rodata
-	__exc: .ascii                   "An exception occured: "
+	.text
+	.section	.rodata.str1.1,"aMS",@progbits,1
+__exc:
+	.string                         "An exception occured: "
+__exit:
+    .string                         "Process finished with exit code "
 .equ __exc_len,                     22
-	digits: .byte                   48, 49, 50, 51, 52, 53, 54, 55, 56, 57
-	new_line: .byte                 10
-	__exit: .ascii                  "Process finished with exit code "
 .equ __exit_len,                    32
 
-.section .text
-
-.global                             _init
-.type                               _init, @function
-_init:
-movq   $0x0, INTERNAL____READ_PTR
-movq   $0x0, INTERNAL____READ_PTR+8
+.text
+.p2align 4,,15
+.global                             _pseudo_stdlib_init
+.type                               _pseudo_stdlib_init, @function
+_pseudo_stdlib_init:
+movq    INTERNAL____READ_PTR@GOTPCREL(%rip), %rdi
+movq    $0x0, (%rdi)
+movq    $0x0, 8(%rdi)
+movq    EXCEPTION@GOTPCREL(%rip), %rdi
+movq    $0x0, (%rdi)
 retq
 
 .global                             _exception
@@ -55,15 +54,17 @@ _exception:
 .cfi_startproc
 negq    %rax
 pushq   %rax
-movq    $__exc, %rax
+movq    EXCEPTION@GOTPCREL(%rip), %rdi
+movq    %rax, (%rdi)
+leaq    __exc@GOTPCREL(%rip), %rax
 movq    $__exc_len, %rbx
-call    _print_string
+call    _print_string@PLT
 movq    (%rsp), %rax
 movl    $2, %r8d
-call    _print_number
-call    _print_new_line
+call    _print_number@PLT
+call    _print_new_line@PLT
 popq    %rax
-call    _exit
+call    _exit@PLT
 retq
 .cfi_endproc
 
@@ -76,9 +77,9 @@ movq    $SYS_WRITE, %rax
 movq    %r8, %rdi
 movq    $1, %rdx
 pushq   %r8
-call    _make_syscall
+call    _make_syscall@PLT
 popq    %r8
-call    _exception_if_rax_negative
+call    _exception_if_rax_negative@PLT
 mov     %rsi,%rax
 ret
 .cfi_endproc
@@ -94,10 +95,11 @@ movq    $10, %r15
 idiv    %r15d
 test    %eax,%eax
 je      printNumber.l1
-call    _print_number
+call    _print_number@PLT
 printNumber.l1:
-leaq    digits(%rdx), %rax
-call    _print_char
+movq    digits@GOTPCREL(%rip), %rax
+addq    %rdx, %rax
+call    _print_char@PLT
 popq    %rdx
 popq    %rax
 retq
@@ -114,10 +116,11 @@ and     $1, %rdx
 shr     $1, %rax
 test    %rax,%rax
 je      printBinNumber.l1
-call    _print_bin_number
+call    _print_bin_number@PLT
 printBinNumber.l1:
-leaq    digits(%rdx), %rax
-call    _print_char
+movq    digits@GOTPCREL(%rip), %rax
+addq    %rdx, %rax
+call    _print_char@PLT
 popq    %rdx
 popq    %rax
 retq
@@ -127,10 +130,10 @@ retq
 .type                               _print_new_line, @function
 _print_new_line:
 .cfi_startproc
-movq    $new_line, %rax
+movq    new_line@GOTPCREL(%rip), %rax
 movq    $1, %rbx
-call    _print_string
-call    _exception_if_rax_negative
+call    _print_string@PLT
+call    _exception_if_rax_negative@PLT
 retq
 .cfi_endproc
 
@@ -139,17 +142,20 @@ _internal_read:
 movq    %rax, %rdx
 movq    $SYS_READ, %rax
 movq    %r8, %rdi
-movq    $INTERNAL____READ, %rsi
-call    _make_syscall
-call    _exception_if_rax_negative
+movq    INTERNAL____READ@GOTPCREL(%rip), %rsi
+call    _make_syscall@PLT
+call    _exception_if_rax_negative@PLT
 retq
 
 .global                             _exception_if_rax_negative
 .type                               _exception_if_rax_negative, @function
 _exception_if_rax_negative:
+movq    EXCEPTION@GOTPCREL(%rip), %rdi
+cmpq    $0, (%rdi)
+je      _exception_if_rax_negative.l1
 or      %rax, %rax
 jns     _exception_if_rax_negative.l1
-call    _exception
+call    _exception@PLT
 _exception_if_rax_negative.l1:
 retq
 
@@ -157,18 +163,20 @@ retq
 .type                               _read_value, @function
 _read_value:
 .cfi_startproc
-movq    INTERNAL____READ_PTR, %r11
-movq    INTERNAL____READ_PTR+8, %r12
+movq    INTERNAL____READ_PTR@GOTPCREL(%rip), %r11
+movq    8(%r11), %r12
+movq    (%r11), %r11
 cmpq    %r12,%r11
 jl      readValue.l1
 movq    $65536, %rax
-call    _internal_read
+call    _internal_read@PLT
 movq    %rax,%rbx
 cmpq    $STDIN, %r8
 jne     readValue.l3
 subq    $1, %rbx
 readValue.l3:
-movq    %rbx, INTERNAL____READ_PTR+8
+movq    INTERNAL____READ_PTR@GOTPCREL(%rip), %r15
+movq    %rbx, 8(%r15)
 movq    $0, %r10
 jmp     readValue.l4
 readValue.l1:
@@ -177,12 +185,15 @@ movq    %r12, %rbx
 readValue.l4:
 movq    $0, %rax
 readValue.l5:
-movzxb  INTERNAL____READ(%r10), %rcx
+movq    INTERNAL____READ@GOTPCREL(%rip), %rcx
+addq    %r10, %rcx
+movzxb  (%rcx), %rcx
 cmpq    $0x20, %rcx
 je      readValue.l6
 cmpq    $0xa, %rcx
 je      readValue.l6
-cmpq    INTERNAL____READ_PTR+8, %r10
+movq    INTERNAL____READ_PTR@GOTPCREL(%rip), %r15
+cmpq    8(%r15), %r10
 jge     readValue.l6
 subq    $0x30, %rcx# rcx=rcx-'0'
 incq    %r10
@@ -193,15 +204,19 @@ cmpq    %rbx, %r10
 jl      readValue.l5
 readValue.l6:
 incq    %r10
-cmpq    INTERNAL____READ_PTR+8, %r10
+movq    INTERNAL____READ_PTR@GOTPCREL(%rip), %r15
+cmpq    8(%r15), %r10
 jge     readValue.l7
-movzxb  INTERNAL____READ(%r10), %rcx
+movq    INTERNAL____READ@GOTPCREL(%rip), %rcx
+addq    %r10, %rcx
+movzxb  (%rcx), %rcx
 cmpq    $0xA, %rcx# '\n'
 je      readValue.l6
 cmpq    $0x20, %rcx# ' '
 je      readValue.l6
 readValue.l7:
-movq    %r10, INTERNAL____READ_PTR
+movq    INTERNAL____READ_PTR@GOTPCREL(%rip), %r15
+movq    %r10, (%r15)
 retq
 .cfi_endproc
 
@@ -209,27 +224,32 @@ retq
 .type                               _read_char, @function
 _read_char:
 .cfi_startproc
-movq    INTERNAL____READ_PTR, %r11
-movq    INTERNAL____READ_PTR+8, %r12
+movq    INTERNAL____READ_PTR@GOTPCREL(%rip), %r11
+movq    (%r11), %r11
+movq    8(%r11), %r12
 cmpq    %r12, %r11
 jl      readChar.l1
 movq    $1, %rax
-call    _internal_read
-call    _exception_if_rax_negative
+call    _internal_read@PLT
+call    _exception_if_rax_negative@PLT
 movq    %rax,%rbx
 cmpq    $STDIN, %r8
 jne     readChar.l3
 subq    $1, %rbx
 readChar.l3:
-movq    %rbx, INTERNAL____READ_PTR+8
+movq    INTERNAL____READ_PTR@GOTPCREL(%rip), %r15
+movq    %rbx, 8(%r15)
 movq    $0, %r10
 jmp     readChar.l4
 readChar.l1:
 movq    %r11, %r10
 readChar.l4:
-movzxb  INTERNAL____READ(%r10),%rax
+movq    INTERNAL____READ@GOTPCREL(%rip),%rax
+addq    %r10, %rax
+movzxb  (%rax), %rax
 incq    %r10
-movq    %r10, INTERNAL____READ_PTR
+movq    INTERNAL____READ_PTR@GOTPCREL(%rip), %r15
+movq    %r10, (%r15)
 retq
 .cfi_endproc
 
@@ -240,12 +260,12 @@ _f_ro_open:
 movq    $0, %rsi
 movq    %rax, %rdi
 movq    $SYS_OPEN, %rax
-call    _make_syscall
+call    _make_syscall@PLT
 cmpq    $0, %rax
 jl      f_ro_open.l1
 retq
 f_ro_open.l1:
-call    _exception
+call    _exception@PLT
 retq
 .cfi_endproc
 
@@ -257,12 +277,12 @@ movq    $577, %rsi # O_TRUNC | O_CREAT | O_WRONLY
 movq    %rbx, %rdx
 movq    %rax, %rdi
 movq    $SYS_OPEN, %rax
-call    _make_syscall
+call    _make_syscall@PLT
 cmpq    $0x0, %rax
 jl      f_wo_open.l1
 retq
 f_wo_open.l1:
-call    _exception
+call    _exception@PLT
 retq
 .cfi_endproc
 
@@ -272,8 +292,8 @@ _f_close:
 .cfi_startproc
 movq    %rax, %rdi
 movq    $SYS_CLOSE, %rax
-call    _make_syscall
-call    _exception_if_rax_negative
+call    _make_syscall@PLT
+call    _exception_if_rax_negative@PLT
 retq
 .cfi_endproc
 
@@ -302,7 +322,7 @@ cmpq    -8(%rax, %r10, 8), %r8
 jge     sort.l3
 leaq    (%rax, %r10, 8), %rcx
 leaq    -8(%rcx), %rdx
-call    _swap
+call    _swap@PLT
 movq    $0x1, %r11
 sort.l3:
 incq    %r10
@@ -328,7 +348,7 @@ cmpq    -0x8(%rax, %r10, 8), %r8
 jle     reverse_sort.l3
 leaq    (%rax, %r10, 8), %rcx
 leaq    -0x8(%rax, %r10, 8), %rdx
-call    _swap
+call    _swap@PLT
 movq    $0x1, %r11
 reverse_sort.l3:
 incq    %r10
@@ -351,7 +371,7 @@ subq    %rax, %rbx# rbx = size
 leaq    (,%rbx,8), %rbx# rbx = size in memory
 leaq    (%rax, %rbx), %rdx# rdx = end in memory
 reverse.l1:
-call    _swap # swaps rcx and rdx
+call    _swap@PLT # swaps rcx and rdx
 addq    $0x8, %rcx
 subq    $0x8, %rdx
 cmpq    %rdx, %rcx
@@ -365,13 +385,13 @@ _exit:
 .cfi_startproc
 pushq   %rax
 movq    $STDOUT, %r8
-movq    $__exit, %rax
+movq    __exit@GOTPCREL(%rip), %rax
 movq    $__exit_len, %rbx
-call    _print_string
+call    _print_string@PLT
 movq    (%rsp), %rax
 movq    $STDOUT, %r8
-call    _print_number
-call    _print_new_line
+call    _print_number@PLT
+call    _print_new_line@PLT
 movq    $SYS_EXIT, %rax
 popq    %rdi
 call    _make_syscall
@@ -389,11 +409,11 @@ movq    %rax, %rsi
 movq    %rbx, %rdx
 pushq   %r8
 movq    $SYS_WRITE, %rax
-call    _make_syscall
+call    _make_syscall@PLT
 popq    %r8
 or      %rax, %rax
 jns     printString.l1
-call    _exception
+call    _exception@PLT
 printString.l1:
 retq
 
@@ -512,7 +532,7 @@ _make_syscall:
 # switch (%rax){
 cmpq    $SYS_EXIT, %rax
 jne     _make_syscall.l2
-call    _win_exit # case SYS_EXIT:
+call    _win_exit@PLT # case SYS_EXIT:
 jmp     _make_syscall.l1
 _make_syscall.l2:
 
@@ -531,3 +551,31 @@ pushq   %rbx
 call    _ExitProcess@8
 retq
 .endif
+
+	.section    .rodata
+	.globl  digits
+	.type   digits, @object
+	.align 16
+digits:
+	.byte 48
+	.byte 49
+	.byte 50
+	.byte 51
+	.byte 52
+	.byte 53
+	.byte 54
+	.byte 55
+	.byte 56
+	.byte 57
+
+	.globl	new_line
+	.section	.rodata
+	.type	new_line, @object
+	.size	new_line, 1
+new_line:
+	.byte	10
+
+
+	.comm INTERNAL____READ_PTR,    16,32
+	.comm INTERNAL____READ,        65536,32
+	.comm EXCEPTION, 8

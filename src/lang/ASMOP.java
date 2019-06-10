@@ -30,7 +30,7 @@ public class ASMOP {
 		this.arg1 = arg1;
 		this.arg2 = arg2;
 		isLabel = OP.endsWith(":");
-		isJump = OP.matches("^j(mp|g|ge|l|le|e|ne|nz|z)$");
+		isJump = OP.matches("^j(mp|g|ge|l|le|e|ne|nz|z|s|ns|c|nc)$");
 	}
 
 	public ASMOP withComment(String comment) {

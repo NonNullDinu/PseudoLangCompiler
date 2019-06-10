@@ -26,9 +26,9 @@ public enum METHOD {
 	@SuppressWarnings("unused")
 	EXIT((m, argTokens) -> {
 		if (argTokens != null && argTokens.length > 0) {
-			return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmov %r10, %rax\n\tcall _exit\n";
+			return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmov %r10, %rax\n\tcall _exit@PLT\n";
 		} else
-			return "\tmovq $0, %rax\n\tcall _exit\n";
+			return "\tmovq $0, %rax\n\tcall _exit@PLT\n";
 	}),
 
 	@SuppressWarnings("unused")
@@ -48,7 +48,7 @@ public enum METHOD {
 	@SuppressWarnings("unused")
 	PRINT_DIGIT((m, argTokens) -> {
 		_LANG_COMPILER.rec_ind = 0;
-		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tleaq digits(,%r10,1), %rax\n\tcall _print_char\n";
+		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tleaq digits(,%r10,1), %rax\n\tcall _print_char@PLT\n";
 	}),
 
 	@SuppressWarnings("unused")
@@ -69,7 +69,7 @@ public enum METHOD {
 				if (i == 0)
 					asm.append("\tmovq $0, %r8\n");
 				_LANG_COMPILER.rec_ind = 0;
-				asm.append("\tcall _read_value\n");
+				asm.append("\tcall _read_value@PLT\n");
 				_LANG_COMPILER.preparations = "";
 				String v = _LANG_COMPILER.AssemblyMake.value(tk[0]);
 				asm.append(_LANG_COMPILER.preparations).append("\tmovq %rax, ").append(v).append("//POINTER\n");
@@ -99,14 +99,14 @@ public enum METHOD {
 						if (str == null)
 							throw new RuntimeException("Could not create variable");
 					}
-					asm.append("\tmovq $").append(str.name).append(", %rax\n\tmovq $").append(((StringToken) a[0]).str.length() - 2).append(", %rbx\n\tcall _print_string\n");
+					asm.append("\tmovq $").append(str.name).append(", %rax\n\tmovq $").append(((StringToken) a[0]).str.length() - 2).append(", %rbx\n\tcall _print_string@PLT\n");
 				} else
-					asm.append("\tcall _print_new_line\n");
+					asm.append("\tcall _print_new_line@PLT\n");
 			} else {
 				_LANG_COMPILER.rec_ind = 0;
 				_LANG_COMPILER.preparations = "";
 				String v = _LANG_COMPILER.AssemblyMake.valueInstructions(a);
-				asm.append(_LANG_COMPILER.preparations).append(v).append("\tmov %r10, %rax\n\tcall _print_number\n");
+				asm.append(_LANG_COMPILER.preparations).append(v).append("\tmov %r10, %rax\n\tcall _print_number@PLT\n");
 			}
 		}
 		return asm.toString();
@@ -125,7 +125,7 @@ public enum METHOD {
 				} else asm.append("\tmov $1, %r8\n");
 			}
 			_LANG_COMPILER.rec_ind = 0;
-			asm.append(_LANG_COMPILER.AssemblyMake.valueInstructions(a)).append("\tmov %r10, %rax\n\tcall _print_bin_number\n");
+			asm.append(_LANG_COMPILER.AssemblyMake.valueInstructions(a)).append("\tmov %r10, %rax\n\tcall _print_bin_number@PLT\n");
 		}
 		return asm.toString();
 	}),
@@ -168,7 +168,7 @@ public enum METHOD {
 	CLOSE(((m, argTokens) -> {
 		if (argTokens[0][0] instanceof FILE_TOKEN) {
 			return "\tmovzxw var_" + _LANG_COMPILER.var_indices.get(((IdentifierToken) argTokens[0][1]).identifier) + ", %rax\n" +
-					"\tcall _f_close\n";
+					"\tcall _f_close@PLT\n";
 		}
 		return "";
 	})),
@@ -195,7 +195,7 @@ public enum METHOD {
 		//END
 		_LANG_COMPILER.rec_ind = 0;
 		String v2 = _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[1]) + "\tmovq %r10, %rsi\n";
-		return v1 + v2 + "\tpopq %rdi\n\tcall _merge_sort\n";
+		return v1 + v2 + "\tpopq %rdi\n\tcall _merge_sort@PLT\n";
 	})),
 
 	@SuppressWarnings("unused")
@@ -206,7 +206,7 @@ public enum METHOD {
 		//END
 		_LANG_COMPILER.rec_ind = 0;
 		String v2 = _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[1]) + "\tmovq %r10, %rbx\n";
-		return v1 + v2 + "\tpopq %rax\n\tcall _reverse_sort\n";
+		return v1 + v2 + "\tpopq %rax\n\tcall _reverse_sort@PLT\n";
 	})),
 
 	@SuppressWarnings("unused")
@@ -217,14 +217,14 @@ public enum METHOD {
 		//END
 		_LANG_COMPILER.rec_ind = 0;
 		String v2 = _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[1]) + "\tmovq %r10, %rbx\n";
-		return v1 + v2 + "\tpopq %rax\n\tcall _reverse\n";
+		return v1 + v2 + "\tpopq %rax\n\tcall _reverse@PLT\n";
 	})),
 
 	@SuppressWarnings("unused")
-	SWAP((m, argTokens) -> "\tmovq $var_" + _LANG_COMPILER.var_indices.get(((IdentifierToken) argTokens[0][0]).identifier) + ", %rcx\n\tmovq $var_" + _LANG_COMPILER.var_indices.get(((IdentifierToken) argTokens[1][0]).identifier) + ", %rdx\n\tcall _swap\n"),
+	SWAP((m, argTokens) -> "\tmovq $var_" + _LANG_COMPILER.var_indices.get(((IdentifierToken) argTokens[0][0]).identifier) + ", %rcx\n\tmovq $var_" + _LANG_COMPILER.var_indices.get(((IdentifierToken) argTokens[1][0]).identifier) + ", %rdx\n\tcall _swap@PLT\n"),
 
 	@SuppressWarnings("unused")
-	PRIME((m, argTokens) -> _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rax\n\tcall _prime\n\tmovq %rax, " + _LANG_COMPILER.AssemblyMake.value(argTokens[1][0]) + "\n"),
+	PRIME((m, argTokens) -> _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rax\n\tcall _prime@PLT\n\tmovq %rax, " + _LANG_COMPILER.AssemblyMake.value(argTokens[1][0]) + "\n"),
 
 	@SuppressWarnings("unused")
 	DIV_SUM((m, argTokens) -> {
@@ -232,14 +232,14 @@ public enum METHOD {
 		//2 - idf of result target
 		_LANG_COMPILER.preparations = "";
 		String v = _LANG_COMPILER.AssemblyMake.value(argTokens[1][0]);
-		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rbx\n\tcall _div_sum\n\tpushq %rcx\n" + _LANG_COMPILER.preparations + "\tpopq %rcx\n\tmovq %rcx, " + v + "\n";
+		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rbx\n\tcall _div_sum@PLT\n\tpushq %rcx\n" + _LANG_COMPILER.preparations + "\tpopq %rcx\n\tmovq %rcx, " + v + "\n";
 	}),
 
 	@SuppressWarnings("unused")
 	PERFECT((m, argTokens) -> {
 		_LANG_COMPILER.preparations = "";
 		String v = _LANG_COMPILER.AssemblyMake.value(argTokens[1][0]);
-		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rax\n\tcall _perfect\n\tpushq %rax\n" + _LANG_COMPILER.preparations + "\tpopq %rax\n\tmovq %rax, " + v + "\n";
+		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rax\n\tcall _perfect@PLT\n\tpushq %rax\n" + _LANG_COMPILER.preparations + "\tpopq %rax\n\tmovq %rax, " + v + "\n";
 	});
 	private CALLBACK callback;
 
