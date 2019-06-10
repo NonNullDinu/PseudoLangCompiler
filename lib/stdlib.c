@@ -58,5 +58,3 @@ void _merge_sort(register void* a, register long long s){
 	_merge_sort((void*)((long long*)a + middlepos), s - middlepos);
 	_merge(a,  midadr, middlepos, s - middlepos);
 }
-
-void _call_merge_sort(register void* a, register long long s){}
