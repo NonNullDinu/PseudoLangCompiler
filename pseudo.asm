@@ -7,8 +7,8 @@
 			.extern _f_wo_open
 			.extern _read_value
 			.extern _prime
-			.extern _print_number
 			.extern _f_close
+			.extern _print_number
 .section .bss
 			.lcomm INTERNAL____CACHE, 524288
 			.lcomm var_0, 8
@@ -31,10 +31,18 @@ str_1:
 			.asciz "found "
 str_2:
 			.asciz " primes"
-file_2_path:
-			.asciz "pseudo.maxdiff.out"
 str_3:
+			.asciz "sorting them now"
+str_4:
+			.asciz "sorted 'em and now writing them to pseudo.out"
+file_2_path:
+			.asciz "pseudo.out"
+str_5:
+			.asciz "opened file successfully"
+str_6:
 			.asciz " "
+str_7:
+			.asciz "wrote 'em"
 .section .text
 			.globl		main
 main:
@@ -54,7 +62,6 @@ WHILE_1:
 			jg			LOGIC_1
 			movq		$1,						%r10
 LOGIC_1:
-			movq		%r10,					INTERNAL____CACHE+0
 			cmpq		$0,						%r10
 			je			WHILE_1_END
 			movzxw		var_7,					%r8
@@ -75,7 +82,6 @@ COND_1_TRUE:
 			movq		var_5,					%rdi
 			movq		%rax,					var_6(,%rdi,8)
 			movq		var_5,					%r10
-			movq		$1,						%r11
 			add			$1,						%r10
 			movq		%r10,					var_5
 COND_1_FINAL_END:
@@ -83,42 +89,49 @@ COND_1_FINAL_END:
 			addq		$1,						var_3
 			jmp			WHILE_1
 WHILE_1_END:
+			movzxw		var_7,					%rax
+			call		_f_close@PLT
+			movq		var_5,					%r10
+			sub			$1,						%r10
+			movq		%r10,					var_5
 			mov			$1,						%r8
 			movq		$str_1,					%rax
 			movq		$6,						%rbx
 			call		_print_string@PLT
-			movq		var_5,					%r10
-			sub			$1,						%r10
-			mov			%r10,					%rax
+			mov			var_5,					%rax
 			call		_print_number@PLT
 			movq		$str_2,					%rax
 			movq		$7,						%rbx
 			call		_print_string@PLT
 			call		_print_new_line@PLT
+			movq		$str_3,					%rax
+			movq		$16,					%rbx
+			call		_print_string@PLT
+			call		_print_new_line@PLT
 			movq		$var_6,					%r10
 			add			$8,						%r10
 			pushq		%r10
-			movq		var_5,					%r10
-			movq		$1,						%r11
-			sub			$1,						%r10
-			movq		%r10,					%rsi
+			movq		var_5,					%rsi
 			popq		%rdi
 			call		_merge_sort@PLT
-			movzxw		var_7,					%rax
-			call		_f_close@PLT
+			mov			$1,						%r8
+			movq		$str_4,					%rax
+			movq		$45,					%rbx
+			call		_print_string@PLT
+			call		_print_new_line@PLT
 			movq		$file_2_path,			%rax
 			movq		$0744,					%rbx
 			call		_f_wo_open@PLT
 			movw		%ax,					var_2
+			mov			$1,						%r8
+			movq		$str_5,					%rax
+			movq		$24,					%rbx
+			call		_print_string@PLT
+			call		_print_new_line@PLT
 			movq		$1,						var_3
 WHILE_2:
 			movq		var_3,					%r10
-			movq		%r10,					INTERNAL____CACHE+0
-			movq		var_5,					%r10
-			sub			$1,						%r10
-			movq		%r10,					INTERNAL____CACHE+8
-			movq		INTERNAL____CACHE+0,	%r10
-			cmp			INTERNAL____CACHE+8,	%r10
+			cmp			var_5,					%r10
 			movq		$0,						%r10
 			jg			LOGIC_3
 			movq		$1,						%r10
@@ -129,7 +142,7 @@ LOGIC_3:
 			movq		var_3,					%rdi
 			mov			var_6(,%rdi,8),			%rax
 			call		_print_number@PLT
-			movq		$str_3,					%rax
+			movq		$str_6,					%rax
 			movq		$1,						%rbx
 			call		_print_string@PLT
 			movq		$1,						%r10
@@ -138,5 +151,10 @@ LOGIC_3:
 WHILE_2_END:
 			movzxw		var_2,					%rax
 			call		_f_close@PLT
+			mov			$1,						%r8
+			movq		$str_7,					%rax
+			movq		$9,						%rbx
+			call		_print_string@PLT
+			call		_print_new_line@PLT
 			mov			$0,						%rax
 			call		_exit@PLT

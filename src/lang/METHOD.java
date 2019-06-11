@@ -69,10 +69,10 @@ public enum METHOD {
 				if (i == 0)
 					asm.append("\tmovq $0, %r8\n");
 				_LANG_COMPILER.rec_ind = 0;
-				asm.append("\tcall _read_value@PLT\n");
+				asm.append("\tcall _read_value@PLT\n\tpushq %rax\n");
 				_LANG_COMPILER.preparations = "";
 				String v = _LANG_COMPILER.AssemblyMake.value(tk[0]);
-				asm.append(_LANG_COMPILER.preparations).append("\tmovq %rax, ").append(v).append("//POINTER\n");
+				asm.append(_LANG_COMPILER.preparations).append("\tpopq %rax\n\tmovq %rax, ").append(v).append("//POINTER\n");
 			}
 		}
 		return asm.toString();

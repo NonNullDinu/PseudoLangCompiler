@@ -197,7 +197,8 @@ public class _LANG_COMPILER {
 		optimizationStrategies.add(new OptimizationStrategy("mov(b|w|l|q)\\s+(.*),\\s+(.*)" + nlr + "push\\1\\s+\\3", "push$1 $2"));//REPLACE MOV b,a PUSH a with PUSH b
 		optimizationStrategies.add(new OptimizationStrategy("mov(b|w|l|q)\\s+(.*),\\s+(.*)" + nlr + "mov\\1\\s+\\3,\\s+\\2", "mov$1 $2, $3"));//REPLACE MOV a,b MOV b,a with MOV a,b
 		optimizationStrategies.add(new OptimizationStrategy("movq\\s+(.*),\\s+%r10" + nlr + "movq\\s+(.*),\\s+%r11" + nlr + "cmp.?\\s+%r11, %r10", "movq $1, %r10" + nl + "cmp $2, %r10"));
-		optimizationStrategies.add(new OptimizationStrategy("movq\\s+(.*),\\s+%r10" + nlr + "(add|sub|shl|shr)q\\s+$(\\d+),\\s+%r10" + nlr + "mov.? \\1, r10", "$2 \\$$3, $1" + nl + "movq %r10, $1"));
+		optimizationStrategies.add(new OptimizationStrategy("movq\\s+(\\$\\d+),\\s*%r11" + nlr + "(add|sub)(.?)\\s+\\1,\\s*%r10", "$2$3 $1, %r10"));
+		optimizationStrategies.add(new OptimizationStrategy("movq\\s+(.*),\\s+%r10" + nlr + "(add|sub|shl|shr)q\\s+$(\\d+),\\s+%r10" + nlr + "mov.?\\s+%r10,\\s*\\1", "$2 \\$$3, $1" + nl + "movq $1, %r10"));
 		optimizationStrategies.add(new OptimizationStrategy("push(.?)\\s+(.*)" + nlr + "pop\\1?\\s+\\2", ""));
 		optimizationStrategies.add(new OptimizationStrategy("movq\\s+\\$(\\d+),\\s+%r11" + nlr + "cmpq\\s+\\$\\1,\\s+%r10", "cmpq \\$$1, %r10"));
 		optimizationStrategies.add(new OptimizationStrategy("movq\\s+\\$(\\d+),\\s+%r10" + nlr + "movq\\s+(\\$\\1|%r10),\\s+var_(.*)", "movq \\$$1, var_$3"));
@@ -240,6 +241,21 @@ public class _LANG_COMPILER {
 		program_file_name = "pseudo.psl";
 		asm_source_file = "pseudo.asm";
 		target_binary_file = "pseudo";
+		for (int i = 0; i < args.length; i++)
+			switch (args[i]) {
+				case "-src":
+					i++;
+					program_file_name = args[i];
+					break;
+				case "-o":
+					i++;
+					target_binary_file = args[i];
+					break;
+				case "-asm":
+					i++;
+					asm_source_file = args[i];
+					break;
+			}
 		readProgram();
 		tokenizeProgram();
 		AssemblyMake.makeAssembly();
@@ -419,7 +435,7 @@ public class _LANG_COMPILER {
 				if (depth == 0)
 					return "\tmovq $" + Objects.requireNonNull(evaluate(valueTokens)).vi + ", %r10\n";
 				else
-					return "\tmovq $" + Objects.requireNonNull(evaluate(valueTokens)).vi + ", %r10\n\tmovq %r10, INTERNAL____CACHE+" + (8 * (cache_ptr = internal_cache_index++)) + "\n";
+					return "\tmovq $" + Objects.requireNonNull(evaluate(valueTokens)).vi + ", INTERNAL____CACHE+" + (8 * (cache_ptr = internal_cache_index++)) + "\n";
 			}
 
 			if (valueTokens.length == 1) {
@@ -646,7 +662,7 @@ public class _LANG_COMPILER {
 					System.err.println("GAS:\n" + msg);
 					System.exit(p.exitValue());
 				}
-				p = Runtime.getRuntime().exec(new String[]{"ld", "-o", target_binary_file, "-dynamic-linker", "/lib/ld-linux-x86-64.so.2", "/usr/lib/crt1.o", "/usr/lib/crti.o", "-lc", "pseudo.o", "/usr/lib/crtn.o", "-L./lib", "-lstd"});
+				p = Runtime.getRuntime().exec(new String[]{"ld", "-o", target_binary_file, "-dynamic-linker", "/lib/ld-linux-x86-64.so.2", "/usr/lib/crt1.o", "/usr/lib/crti.o", "-lc", "pseudo.o", "/usr/lib/crtn.o", "-lpseudo-std"});
 				p.waitFor();
 				if (p.exitValue() != 0) {
 					InputStream inr = p.getErrorStream();
@@ -1025,7 +1041,6 @@ public class _LANG_COMPILER {
 							break;
 						case "_f_wo_open@PLT":
 						case "_sort@PLT":
-						case "_print_string@PLT":
 							setrequiredreg("%rax", true);
 							setrequiredreg("%rbx", true);
 							break;
@@ -1038,6 +1053,11 @@ public class _LANG_COMPILER {
 							setrequiredreg("%rdi", true);
 							break;
 						case "_div_sum@PLT":
+							setrequiredreg("%rbx", true);
+							break;
+						case "_print_string@PLT":
+							setrequiredreg("%r8", true);
+							setrequiredreg("%rax", true);
 							setrequiredreg("%rbx", true);
 							break;
 					}

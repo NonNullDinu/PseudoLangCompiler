@@ -1,0 +1,21 @@
+pkgbase='pseudo-libs'
+pkgname='pseudo-runtime-libs'
+pkgver='1.0'
+pkgrel='0'
+pkgdesc='The runtime functions required by pseudo lang programs'
+arch=('x86_64')
+license=('GPL')
+depends=()
+makedepends=('gcc' 'glibc' 'binutils')
+source=("$pkgname-$pkgver.tar.gz")
+sha512sums=('a52a56178933a725cae391d3640e846dec565f7d852efecd9b158af447c90148ce0aa6b3910cac6e8f3ca1a16cb18d477b968604e7f082cc72fbe47bf8baaf0f')
+validpgpkeys=("F165B36E6560241A8533CBC9D060643848A7470B")
+
+build(){
+	make
+}
+
+package() {
+	mkdir -p "$pkgdir"/lib64
+ 	make DESTDIR="$pkgdir" install
+}

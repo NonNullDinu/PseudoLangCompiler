@@ -116,3 +116,38 @@ Syntax is the same as writing to the console, but the first parameter is <code>f
 ### Reading from a file
 Same as writing to a file, the first parameter is <code>file &lt;file_descriptor></code>
 <pre>read file &lt;file_descriptor>, &lt;identifier1>[,identifier2[,...]]</pre>
+
+## Mathematical functions
+### Checking if a number is prime
+Syntax:
+<pre>prime x, p</pre>
+After the execution of this, p will have the value <code>1</code> if x is prime or <code>0</code> else.
+p must be a variable.
+### Checking if a number is perfect
+Syntax:
+<pre>perfect x, p</pre>
+After the execution of this, p will have the value <code>1</code> if x is perfect or <code>0</code> else.
+p must be a variable.
+
+## Working with arrays
+### Static allocation of an array
+Syntax:
+<pre>allocate &lt;type>, &lt;name>, &lt;size></pre>
+The parameter type is the type that the elements will have.
+The parameter name is the name of the pointer variable that this array will be referenced with.
+The parameter size is a constant number(expressions not allowed here).
+
+### Addressing an element in the array
+Syntax
+<pre>&lt;name>[&lt;ind>]</pre>
+Where name is the name of the array and the ind represents the index of the element that is going to be used.
+ind can be either a constant number, a variable or an expression.
+
+### Sorting an array of int types
+
+If it is in increasing order, just call the sort function:
+<pre>sort &lt;first>, &lt;length></pre>.
+The parameters are:
+- the parameter first represents the first byte of the array to be sorted:
+an example here is array+1 -> translates to the address of the element array\\\[1].
+- the parameter length represents the length of the array to be sorted - the count of elements.

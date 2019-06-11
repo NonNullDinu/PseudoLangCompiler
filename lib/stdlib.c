@@ -20,10 +20,12 @@
 
 long long MERGE_MEMORY[1<<18];
 
+int (*comp_func)(void* a, void* b);
+
 void _merge(register long long* a, register long long *b, register long long s1, register long long s2){
 	register long long i=0, j=0, k=0;
 	while(i < s1 && j < s2){
-		if(*(a+i) < *(b+j)){
+		if(comp_func((a+i), (b+j))){
 			MERGE_MEMORY[k++] = *(a+(i++));
 		}
 		else{
@@ -49,12 +51,16 @@ void _merge(register long long* a, register long long *b, register long long s1,
 	}
 }
 
-void _merge_sort(register void* a, register long long s){
+void _merge_sort(register long long* a, register long long s){
 	if(s <= 1)
 		return;
-	register long long middlepos = s / 2;
-	register long long *midadr = (long long*)a + middlepos;
+	register int middlepos = s / 2;
+	register long long *midadr = a + middlepos;
 	_merge_sort(a, middlepos);
-	_merge_sort((void*)((long long*)a + middlepos), s - middlepos);
+	_merge_sort((void*)(a + middlepos), s - middlepos);
 	_merge(a,  midadr, middlepos, s - middlepos);
+}
+
+void _prepare_for_sort(register int (*comp)(void* a, void* b)){
+	comp_func = comp;
 }

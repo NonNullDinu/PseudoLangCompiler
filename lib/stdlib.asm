@@ -56,11 +56,12 @@ negq    %rax
 pushq   %rax
 movq    EXCEPTION@GOTPCREL(%rip), %rdi
 movq    %rax, (%rdi)
-leaq    __exc@GOTPCREL(%rip), %rax
+movq    __exc@GOTPCREL(%rip), %rax
 movq    $__exc_len, %rbx
+movq    $STDERR, %r8
 call    _print_string@PLT
 movq    (%rsp), %rax
-movl    $2, %r8d
+movq    $STDERR, %r8
 call    _print_number@PLT
 call    _print_new_line@PLT
 popq    %rax

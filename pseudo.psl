@@ -21,14 +21,18 @@ begin
 			k <- k + 1
 		end
 	end
-	write "found ", k-1, " primes", "\n"
-	sort arr+1, k-1
 	close file fin
-	open file fout, "pseudo.maxdiff.out", write only, 744
-	for i <- 1, k-1 do
+	k <- k-1
+	write "found ", k, " primes", "\n", "sorting them now", "\n"
+	sort arr+1, k
+	write "sorted 'em and now writing them to pseudo.out", "\n"
+	open file fout, "pseudo.out", write only, 744
+	write "opened file successfully", "\n"
+	for i <- 1, k do
 	begin
 		write file fout, arr[i], " "
 	end
 	close file fout
+	write "wrote 'em", "\n"
 end
 exit 0

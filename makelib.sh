@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 cd lib
-if [[ -f libstd.so ]]; then rm libstd.so; fi
+if [[ -f libpseudo-std.so ]]; then rm libpseudo-std.so; fi
 for fl in *.asm ; do
     flname="$(basename -- $fl)"
     flname="${flname%.*}"
@@ -15,5 +15,5 @@ for fl in *.s ; do
     as "$fl" -o "$flname".o2
 done
 echo "Successfully compiled"
-gcc -shared -o libstd.so *.o  *.o2
+gcc -shared -o libpseudo-std.so *.o  *.o2
 #rm *.o *.o2
