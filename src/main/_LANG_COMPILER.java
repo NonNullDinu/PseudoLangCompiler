@@ -441,7 +441,12 @@ public class _LANG_COMPILER {
 			if (valueTokens.length == 1) {
 				preparations = "";
 				String v = value(valueTokens[0]);
-				return preparations + "\tmovq " + v + ", %r10\n" + (depth != 0 ? "\tmovq %r10, INTERNAL____CACHE+" + (8 * (cache_ptr = internal_cache_index++)) + "\n" : "");
+				String asm_ = preparations + "\tmovq " + v + ", %r10\n";
+
+				if (alignment != 1)
+					asm_ += "\tleaq (,%r10," + alignment + "), %r10\n";
+				asm_ += (depth != 0 ? "\tmovq %r10, INTERNAL____CACHE+" + (8 * (cache_ptr = internal_cache_index++)) + "\n" : "");
+				return asm_;
 			} else if (valueTokens.length == 3) {
 				preparations = "";
 				String val = value(valueTokens[0]);
@@ -449,6 +454,8 @@ public class _LANG_COMPILER {
 				preparations = "";
 				val = value(valueTokens[2]);
 				asm_ += preparations + "\tpopq %r10\n\tmovq " + val + ", %r11\n";
+				if (alignment != 1)
+					asm_ += "\tleaq (,%r11," + alignment + "), %r11\n";
 				asm_ += "\t" + ((OperatorToken) valueTokens[1]).asm_code("r10", "r11") + "\n";
 				if (depth != 0)
 					asm_ += "\tmovq %r10, INTERNAL____CACHE+" + (8 * (cache_ptr = internal_cache_index++)) + "\n";
@@ -495,9 +502,15 @@ public class _LANG_COMPILER {
 				}
 				if (parenthesis)
 					if (valueTokens.length == 1) {
+
 						preparations = "";
 						String v = value(valueTokens[0]);
-						return asm.toString() + preparations + "\tmovq " + v + ", %r10\n" + (depth != 0 ? "\tmovq %r10, INTERNAL____CACHE+" + (8 * (cache_ptr = internal_cache_index++)) + "\n" : "");
+						String asm_ = preparations + "\tmovq " + v + ", %r10\n";
+
+						if (alignment != 1)
+							asm_ += "\tleaq (,%r10," + alignment + "), %r10\n";
+						asm_ += (depth != 0 ? "\tmovq %r10, INTERNAL____CACHE+" + (8 * (cache_ptr = internal_cache_index++)) + "\n" : "");
+						return asm.toString() + asm_;
 					} else if (valueTokens.length == 3) {
 						preparations = "";
 						String val = value(valueTokens[0]);
@@ -505,6 +518,8 @@ public class _LANG_COMPILER {
 						preparations = "";
 						val = value(valueTokens[2]);
 						asm_ += preparations + "\tpopq %r10\n\tmovq " + val + ", %r11\n";
+						if (alignment != 1)
+							asm_ += "\tleaq (,%r11," + alignment + "), %r11\n";
 						asm_ += "\t" + ((OperatorToken) valueTokens[1]).asm_code("r10", "r11") + "\n";
 						if (depth != 0)
 							asm_ += "\tmovq %r10, INTERNAL____CACHE+" + (8 * (cache_ptr = internal_cache_index++)) + "\n";
@@ -686,7 +701,7 @@ public class _LANG_COMPILER {
 		public static String value(Token token) {
 			preparations = "";
 			if (token instanceof NumberToken)
-				return "$" + (((NumberToken) token).v * alignment);
+				return "$" + (((NumberToken) token).v);
 			else if (token instanceof IdentifierToken) {
 				IdentifierToken idf = ((IdentifierToken) token);
 				if (idf.data_type == DATA_TYPE.POINTER)
@@ -1041,6 +1056,7 @@ public class _LANG_COMPILER {
 							break;
 						case "_f_wo_open@PLT":
 						case "_sort@PLT":
+						case "_reverse@PLT":
 							setrequiredreg("%rax", true);
 							setrequiredreg("%rbx", true);
 							break;
@@ -1059,6 +1075,9 @@ public class _LANG_COMPILER {
 							setrequiredreg("%r8", true);
 							setrequiredreg("%rax", true);
 							setrequiredreg("%rbx", true);
+							break;
+						case "_prepare_for_sort@PLT":
+							setrequiredreg("%rdi", true);
 							break;
 					}
 				} else if (op.OP.startsWith("push")) {
@@ -1093,6 +1112,10 @@ public class _LANG_COMPILER {
 							op.arg1.value = op1.arg1.value;
 							OPERATIONS.remove(i - 1);
 						}
+					}
+					if (op.OP.startsWith("lea") && op1.OP.startsWith("mov") && op1.arg1.value_is_immediate && op.arg2.value.equals(op1.arg2.value) && op.arg1.value.matches("^\\(," + op.arg2.value + ",\\d\\)$")) {
+						op1.arg1.value = "$" + (Integer.parseInt(op.arg1.value.substring(op.arg1.value.length() - 2, op.arg1.value.length() - 1)) * Integer.parseInt(op1.arg1.value.substring(1/*remove leading $*/)));
+						OPERATIONS.remove(i);
 					}
 				}
 
@@ -1142,7 +1165,7 @@ public class _LANG_COMPILER {
 				if (op.arg1 != null) {
 					optimized.append(op.OP.length() < 4 ? "\t" : "").append("\t\t").append(op.arg1.value);
 					if (op.arg2 != null)
-						optimized.append(",").append("\t".repeat(6 - (op.arg1.value.length() + 1) / 4)).append(op.arg2.value);
+						optimized.append(",").append("\t".repeat(7 - (op.arg1.value.length() + 1) / 4)).append(op.arg2.value);
 				}
 				optimized.append(nl);
 			}

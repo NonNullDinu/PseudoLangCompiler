@@ -26,9 +26,9 @@ public enum METHOD {
 	@SuppressWarnings("unused")
 	EXIT((m, argTokens) -> {
 		if (argTokens != null && argTokens.length > 0) {
-			return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmov %r10, %rax\n\tcall _exit@PLT\n";
+			return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmov %r10, %rax\n\tjmp _exit@PLT\n";
 		} else
-			return "\tmovq $0, %rax\n\tcall _exit@PLT\n";
+			return "\tmovq $0, %rax\n\tjmp _exit@PLT\n";
 	}),
 
 	@SuppressWarnings("unused")
@@ -54,7 +54,8 @@ public enum METHOD {
 	@SuppressWarnings("unused")
 	ASM((m, argTokens) -> {
 		StringBuilder asm = new StringBuilder();
-		for (Token[] t : argTokens) asm.append(((StringToken) t[0]).str.replaceAll("\"", "")).append('\n');
+		for (Token[] t : argTokens)
+			asm.append('\t').append(((StringToken) t[0]).str, 1, ((StringToken) t[0]).str.length() - 1).append('\n');
 		return asm.toString();
 	}),
 
@@ -190,23 +191,13 @@ public enum METHOD {
 	@SuppressWarnings("unused")
 	SORT(((m, argTokens) -> {
 		//BEGIN
+		String prep = "\tmovq $_ll_i_cmp, %rdi\n\tcall _prepare_for_sort@PLT\n";
 		_LANG_COMPILER.rec_ind = 0;
 		String v1 = _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tpushq %r10\n";
 		//END
 		_LANG_COMPILER.rec_ind = 0;
 		String v2 = _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[1]) + "\tmovq %r10, %rsi\n";
-		return v1 + v2 + "\tpopq %rdi\n\tcall _merge_sort@PLT\n";
-	})),
-
-	@SuppressWarnings("unused")
-	REVERSE_SORT(((m, argTokens) -> {
-		//BEGIN
-		_LANG_COMPILER.rec_ind = 0;
-		String v1 = _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tpushq %r10\n";
-		//END
-		_LANG_COMPILER.rec_ind = 0;
-		String v2 = _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[1]) + "\tmovq %r10, %rbx\n";
-		return v1 + v2 + "\tpopq %rax\n\tcall _reverse_sort@PLT\n";
+		return prep + v1 + v2 + "\tpopq %rdi\n\tcall _merge_sort@PLT\n";
 	})),
 
 	@SuppressWarnings("unused")
@@ -220,11 +211,26 @@ public enum METHOD {
 		return v1 + v2 + "\tpopq %rax\n\tcall _reverse@PLT\n";
 	})),
 
+	//The combination of sort and reverse result an array in decreasing order:
+	@SuppressWarnings("unused")
+	REVERSE_SORT((m, argTokens) -> {
+		String prep = "\tmovq $_ll_i_cmp_less, %rdi\n\tcall _prepare_for_sort@PLT\n";
+		_LANG_COMPILER.rec_ind = 0;
+		String v1 = _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tpushq %r10\n";
+		//END
+		_LANG_COMPILER.rec_ind = 0;
+		String v2 = _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[1]) + "\tmovq %r10, %rsi\n";
+		return prep + v1 + v2 + "\tpopq %rdi\n\tcall _merge_sort@PLT\n";
+	}),
+
 	@SuppressWarnings("unused")
 	SWAP((m, argTokens) -> "\tmovq $var_" + _LANG_COMPILER.var_indices.get(((IdentifierToken) argTokens[0][0]).identifier) + ", %rcx\n\tmovq $var_" + _LANG_COMPILER.var_indices.get(((IdentifierToken) argTokens[1][0]).identifier) + ", %rdx\n\tcall _swap@PLT\n"),
 
 	@SuppressWarnings("unused")
-	PRIME((m, argTokens) -> _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rax\n\tcall _prime@PLT\n\tmovq %rax, " + _LANG_COMPILER.AssemblyMake.value(argTokens[1][0]) + "\n"),
+	PRIME((m, argTokens) -> {
+		_LANG_COMPILER.rec_ind = 0;
+		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rax\n\tcall _prime@PLT\n\tmovq %rax, " + _LANG_COMPILER.AssemblyMake.value(argTokens[1][0]) + "\n";
+	}),
 
 	@SuppressWarnings("unused")
 	DIV_SUM((m, argTokens) -> {
@@ -232,6 +238,7 @@ public enum METHOD {
 		//2 - idf of result target
 		_LANG_COMPILER.preparations = "";
 		String v = _LANG_COMPILER.AssemblyMake.value(argTokens[1][0]);
+		_LANG_COMPILER.rec_ind = 0;
 		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rbx\n\tcall _div_sum@PLT\n\tpushq %rcx\n" + _LANG_COMPILER.preparations + "\tpopq %rcx\n\tmovq %rcx, " + v + "\n";
 	}),
 
@@ -239,6 +246,7 @@ public enum METHOD {
 	PERFECT((m, argTokens) -> {
 		_LANG_COMPILER.preparations = "";
 		String v = _LANG_COMPILER.AssemblyMake.value(argTokens[1][0]);
+		_LANG_COMPILER.rec_ind = 0;
 		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rax\n\tcall _perfect@PLT\n\tpushq %rax\n" + _LANG_COMPILER.preparations + "\tpopq %rax\n\tmovq %rax, " + v + "\n";
 	});
 	private CALLBACK callback;
@@ -246,10 +254,6 @@ public enum METHOD {
 	METHOD(CALLBACK callback) {
 		this.callback = callback;
 	}
-
-//	public String assembly(Token[][] argTokens) {
-//		return callback.assembly(null, argTokens);
-//	}
 
 	public String assembly(Method m, Token[][] argTokens) {
 		return callback.assembly(m, argTokens);

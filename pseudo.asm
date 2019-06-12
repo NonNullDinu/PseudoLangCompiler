@@ -1,8 +1,7 @@
 			.extern _f_ro_open
 			.extern _merge_sort
-			.extern _print_new_line
+			.extern _prepare_for_sort
 			.extern _print_string
-			.extern _exit
 			.extern _pseudo_stdlib_init
 			.extern _f_wo_open
 			.extern _read_value
@@ -13,12 +12,11 @@
 			.lcomm INTERNAL____CACHE, 524288
 			.lcomm var_0, 8
 			.lcomm var_1, 8
-			.lcomm var_2, 2
+			.lcomm var_2, 8
 			.lcomm var_3, 8
 			.lcomm var_4, 8
-			.lcomm var_5, 8
-			.lcomm var_6, 800
-			.lcomm var_7, 2
+			.lcomm var_5, 800
+			.lcomm var_6, 2
 			
 			
 			#DO NOT EDIT
@@ -27,134 +25,97 @@
 .section .rodata
 file_1_path:
 			.asciz "pseudo.in"
-str_1:
-			.asciz "found "
-str_2:
-			.asciz " primes"
-str_3:
-			.asciz "sorting them now"
-str_4:
-			.asciz "sorted 'em and now writing them to pseudo.out"
 file_2_path:
 			.asciz "pseudo.out"
-str_5:
-			.asciz "opened file successfully"
-str_6:
+str_1:
 			.asciz " "
-str_7:
-			.asciz "wrote 'em"
 .section .text
 			.globl		main
 main:
 			call		_pseudo_stdlib_init@PLT
-			movq		$file_1_path,			%rax
+			movq		$file_1_path,				%rax
 			call		_f_ro_open@PLT
-			movw		%ax,					var_7
-			movzxw		var_7,					%r8
+			movw		%ax,						var_6
+			movzxw		var_6,						%r8
 			call		_read_value@PLT
-			movq		%rax,					var_0
-			movq		$1,						var_5
-			movq		$1,						var_3
+			movq		%rax,						var_0
+			movq		$1,							var_4
+			movq		$1,							var_2
 WHILE_1:
-			movq		var_3,					%r10
-			cmp			var_0,					%r10
-			movq		$0,						%r10
+			movq		var_2,						%r10
+			cmp			var_0,						%r10
+			movq		$0,							%r10
 			jg			LOGIC_1
-			movq		$1,						%r10
+			movq		$1,							%r10
 LOGIC_1:
-			cmpq		$0,						%r10
+			cmpq		$0,							%r10
 			je			WHILE_1_END
-			movzxw		var_7,					%r8
+			movzxw		var_6,						%r8
 			call		_read_value@PLT
-			movq		%rax,					var_4
+			movq		%rax,						var_3
 			call		_prime@PLT
-			movq		%rax,					var_1
-			movq		var_1,					%r10
-			cmpq		$1,						%r10
-			movq		$0,						%r10
+			movq		%rax,						var_1
+			movq		var_1,						%r10
+			cmpq		$1,							%r10
+			movq		$0,							%r10
 			jne			LOGIC_2
-			movq		$1,						%r10
+			movq		$1,							%r10
 LOGIC_2:
-			cmpq		$0,						%r10
+			cmpq		$0,							%r10
 			je			COND_1_FINAL_END
 COND_1_TRUE:
-			movq		var_4,					%rax
-			movq		var_5,					%rdi
-			movq		%rax,					var_6(,%rdi,8)
-			movq		var_5,					%r10
-			add			$1,						%r10
-			movq		%r10,					var_5
+			movq		var_3,						%rax
+			movq		var_4,						%rdi
+			movq		%rax,						var_5(,%rdi,8)
+			movq		var_4,						%r10
+			add			$1,							%r10
+			movq		%r10,						var_4
 COND_1_FINAL_END:
-			movq		$1,						%r10
-			addq		$1,						var_3
+			movq		$1,							%r10
+			addq		$1,							var_2
 			jmp			WHILE_1
 WHILE_1_END:
-			movzxw		var_7,					%rax
+			movzxw		var_6,						%rax
 			call		_f_close@PLT
-			movq		var_5,					%r10
-			sub			$1,						%r10
-			movq		%r10,					var_5
-			mov			$1,						%r8
-			movq		$str_1,					%rax
-			movq		$6,						%rbx
-			call		_print_string@PLT
-			mov			var_5,					%rax
-			call		_print_number@PLT
-			movq		$str_2,					%rax
-			movq		$7,						%rbx
-			call		_print_string@PLT
-			call		_print_new_line@PLT
-			movq		$str_3,					%rax
-			movq		$16,					%rbx
-			call		_print_string@PLT
-			call		_print_new_line@PLT
-			movq		$var_6,					%r10
-			add			$8,						%r10
+			movq		var_4,						%r10
+			sub			$1,							%r10
+			movq		%r10,						var_4
+			movq		$_ll_i_cmp_less,			%rdi
+			call		_prepare_for_sort@PLT
+			movq		$var_5,						%r10
+			movq		$8,							%r11
+			add			%r11,						%r10
 			pushq		%r10
-			movq		var_5,					%rsi
+			movq		var_4,						%rsi
 			popq		%rdi
 			call		_merge_sort@PLT
-			mov			$1,						%r8
-			movq		$str_4,					%rax
-			movq		$45,					%rbx
-			call		_print_string@PLT
-			call		_print_new_line@PLT
-			movq		$file_2_path,			%rax
-			movq		$0744,					%rbx
+			movq		$file_2_path,				%rax
+			movq		$0744,						%rbx
 			call		_f_wo_open@PLT
-			movw		%ax,					var_2
-			mov			$1,						%r8
-			movq		$str_5,					%rax
-			movq		$24,					%rbx
-			call		_print_string@PLT
-			call		_print_new_line@PLT
-			movq		$1,						var_3
+			movw		%ax,						var_6
+			movq		$1,							var_2
 WHILE_2:
-			movq		var_3,					%r10
-			cmp			var_5,					%r10
-			movq		$0,						%r10
+			movq		var_2,						%r10
+			cmp			var_4,						%r10
+			movq		$0,							%r10
 			jg			LOGIC_3
-			movq		$1,						%r10
+			movq		$1,							%r10
 LOGIC_3:
-			cmpq		$0,						%r10
+			cmpq		$0,							%r10
 			je			WHILE_2_END
-			movzxw		var_2,					%r8
-			movq		var_3,					%rdi
-			mov			var_6(,%rdi,8),			%rax
+			movzxw		var_6,						%r8
+			movq		var_2,						%rdi
+			mov			var_5(,%rdi,8),				%rax
 			call		_print_number@PLT
-			movq		$str_6,					%rax
-			movq		$1,						%rbx
+			movq		$str_1,						%rax
+			movq		$1,							%rbx
 			call		_print_string@PLT
-			movq		$1,						%r10
-			addq		$1,						var_3
+			movq		$1,							%r10
+			addq		$1,							var_2
 			jmp			WHILE_2
 WHILE_2_END:
-			movzxw		var_2,					%rax
+			movzxw		var_6,						%rax
 			call		_f_close@PLT
-			mov			$1,						%r8
-			movq		$str_7,					%rax
-			movq		$9,						%rbx
-			call		_print_string@PLT
-			call		_print_new_line@PLT
-			mov			$0,						%rax
-			call		_exit@PLT
+			movq		$0,							%r10
+			mov			$0,							%rax
+			jmp			_exit@PLT

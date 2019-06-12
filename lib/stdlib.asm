@@ -309,67 +309,14 @@ movq    %r9, (%rdx)
 retq
 .cfi_endproc
 
-.global                             _sort
-.type                               _sort, @function
-_sort:
-.cfi_startproc
-subq    %rax, %rbx
-sort.l1:
-movq    $0x1, %r10
-movq    $0x0, %r11
-sort.l2:
-movq    (%rax, %r10, 8), %r8
-cmpq    -8(%rax, %r10, 8), %r8
-jge     sort.l3
-leaq    (%rax, %r10, 8), %rcx
-leaq    -8(%rcx), %rdx
-call    _swap@PLT
-movq    $0x1, %r11
-sort.l3:
-incq    %r10
-cmpq    %rbx, %r10
-jl      sort.l2
-cmpq    $0x0, %r11
-jne     sort.l1
-retq
-.cfi_endproc
-
-.global                             _reverse_sort
-.type                               _reverse_sort, @function
-_reverse_sort:
-.cfi_startproc
-movq    $0x0, %r11
-subq    %rax,%rbx
-reverse_sort.l1:
-movq    $0x1, %r10
-movq    $0x0, %r11
-reverse_sort.l2:
-movq    (%rax, %r10, 8), %r8
-cmpq    -0x8(%rax, %r10, 8), %r8
-jle     reverse_sort.l3
-leaq    (%rax, %r10, 8), %rcx
-leaq    -0x8(%rax, %r10, 8), %rdx
-call    _swap@PLT
-movq    $0x1, %r11
-reverse_sort.l3:
-incq    %r10
-cmpq    %rbx, %r10
-jl      reverse_sort.l2
-cmpq    $0x0, %r11
-jne     reverse_sort.l1
-retq
-.cfi_endproc
-
 .global                             _reverse
 .type                               _reverse, @function
 _reverse:
 .cfi_startproc
 # rax = begin in memory
-# rbx = begin in memory + size + 1
+# rbx = size of array
 movq    %rax, %rcx
-subq    $0x1, %rbx# rbx = begin in memory + size
-subq    %rax, %rbx# rbx = size
-leaq    (,%rbx,8), %rbx# rbx = size in memory
+leaq    (,%rbx,8), %rbx # rbx = size in memory
 leaq    (%rax, %rbx), %rdx# rdx = end in memory
 reverse.l1:
 call    _swap@PLT # swaps rcx and rdx
@@ -386,11 +333,13 @@ _exit:
 .cfi_startproc
 pushq   %rax
 movq    $STDOUT, %r8
+movq    $STDOUT, %rdi
 movq    __exit@GOTPCREL(%rip), %rax
 movq    $__exit_len, %rbx
 call    _print_string@PLT
 movq    (%rsp), %rax
 movq    $STDOUT, %r8
+movq    $STDOUT, %rdi
 call    _print_number@PLT
 call    _print_new_line@PLT
 movq    $SYS_EXIT, %rax

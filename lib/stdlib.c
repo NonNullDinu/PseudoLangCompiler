@@ -22,10 +22,18 @@ long long MERGE_MEMORY[1<<18];
 
 int (*comp_func)(void* a, void* b);
 
+int _ll_i_cmp(void* a, void* b){
+	return *((long long*)a) - *((long long*)b);
+}
+
+int _ll_i_cmp_less(void* a, void *b){
+	return *((long long*)b) - *((long long*)a);
+}
+
 void _merge(register long long* a, register long long *b, register long long s1, register long long s2){
 	register long long i=0, j=0, k=0;
 	while(i < s1 && j < s2){
-		if(comp_func((a+i), (b+j))){
+		if(comp_func((a+i), (b+j)) < 0){
 			MERGE_MEMORY[k++] = *(a+(i++));
 		}
 		else{

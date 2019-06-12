@@ -1,19 +1,18 @@
 int n
 int p
-file_stream fout
 int i
 int x
 int k
 pointer arr
-file_stream fin
+file_stream f
 begin
 	allocate int, arr, 100
-	open file fin, "pseudo.in", read only
-	read file fin, n
+	open file f, "pseudo.in", read only
+	read file f, n
 	k <- 1
 	for i <- 1, n do
 	begin
-		read file fin, x
+		read file f, x
 		prime x, p
 		if(p == true) then
 		begin
@@ -21,18 +20,14 @@ begin
 			k <- k + 1
 		end
 	end
-	close file fin
+	close file f
 	k <- k-1
-	write "found ", k, " primes", "\n", "sorting them now", "\n"
-	sort arr+1, k
-	write "sorted 'em and now writing them to pseudo.out", "\n"
-	open file fout, "pseudo.out", write only, 744
-	write "opened file successfully", "\n"
+	reverse_sort arr+1, k
+	open file f, "pseudo.out", write only, 744
 	for i <- 1, k do
 	begin
-		write file fout, arr[i], " "
+		write file f, arr[i], " "
 	end
-	close file fout
-	write "wrote 'em", "\n"
+	close file f
 end
 exit 0

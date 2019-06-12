@@ -149,5 +149,18 @@ If it is in increasing order, just call the sort function:
 <pre>sort &lt;first>, &lt;length></pre>.
 The parameters are:
 - the parameter first represents the first byte of the array to be sorted:
-an example here is array+1 -> translates to the address of the element array\\\[1].
+an example here is array+1 -> translates to the address of the element array\[1].
 - the parameter length represents the length of the array to be sorted - the count of elements.
+
+### Reversing an array of int types
+<pre>reverse &lt;m1>, &lt;count></pre>
+This reverses the memory between m1 and m1+count*8.
+
+Example: if we have an array A = (1, 2, 3, 7, 8, 9) and n is the size of the array(in this case 6), calling <code>reverse A, n</code> will transform A into (9, 8, 7, 3, 2, 1)
+
+### Sorting and reversing an array of int types
+This can be accomplished either by sorting and calling reverse on it or in the following way:
+<pre>reverse_sort &lt;first>, &lt;length></pre>
+The parameters are the same as on normal sorting, but the elements end up in decreasing order. 
+
+Note that this method is faster than sorting normally and reversing.
