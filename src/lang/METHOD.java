@@ -26,9 +26,9 @@ public enum METHOD {
 	@SuppressWarnings("unused")
 	EXIT((m, argTokens) -> {
 		if (argTokens != null && argTokens.length > 0) {
-			return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmov %r10, %rax\n\tjmp _exit@PLT\n";
+			return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmov %r10, %rax\n\tcall _pseudo_exit@PLT\n";
 		} else
-			return "\tmovq $0, %rax\n\tjmp _exit@PLT\n";
+			return "\tmovq $0, %rax\n\tcall _pseudo_exit@PLT\n";
 	}),
 
 	@SuppressWarnings("unused")
@@ -190,8 +190,8 @@ public enum METHOD {
 
 	@SuppressWarnings("unused")
 	SORT(((m, argTokens) -> {
-		//BEGIN
 		String prep = "\tmovq $_ll_i_cmp, %rdi\n\tcall _prepare_for_sort@PLT\n";
+		//BEGIN
 		_LANG_COMPILER.rec_ind = 0;
 		String v1 = _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tpushq %r10\n";
 		//END
@@ -211,7 +211,6 @@ public enum METHOD {
 		return v1 + v2 + "\tpopq %rax\n\tcall _reverse@PLT\n";
 	})),
 
-	//The combination of sort and reverse result an array in decreasing order:
 	@SuppressWarnings("unused")
 	REVERSE_SORT((m, argTokens) -> {
 		String prep = "\tmovq $_ll_i_cmp_less, %rdi\n\tcall _prepare_for_sort@PLT\n";

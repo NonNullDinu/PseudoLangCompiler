@@ -3,10 +3,11 @@ int p
 int i
 int x
 int k
+int ret = 0
 pointer arr
 file_stream f
 begin
-	allocate int, arr, 100
+	allocate int, arr, 65536
 	open file f, "pseudo.in", read only
 	read file f, n
 	k <- 1
@@ -24,10 +25,7 @@ begin
 	k <- k-1
 	reverse_sort arr+1, k
 	open file f, "pseudo.out", write only, 744
-	for i <- 1, k do
-	begin
-		write file f, arr[i], " "
-	end
+	for i <- 1, k do write file f, arr[i], " "
 	close file f
 end
-exit 0
+exit

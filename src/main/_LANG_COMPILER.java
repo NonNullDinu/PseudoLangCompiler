@@ -1047,11 +1047,12 @@ public class _LANG_COMPILER {
 						case "_read_value@PLT":
 							setrequiredreg("%r8", true);
 							break;
-						case "_exit@PLT":
+						case "_pseudo_exit@PLT":
 						case "_f_close@PLT":
 						case "_f_ro_open@PLT":
 						case "_prime@PLT":
 						case "_perfect@PLT":
+						case "_exception@PLT":
 							setrequiredreg("%rax", true);
 							break;
 						case "_f_wo_open@PLT":

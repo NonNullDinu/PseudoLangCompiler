@@ -26,15 +26,18 @@
 .equ STDIN,                         0
 .equ STDOUT,                        1
 .equ STDERR,                        2
-
-	.text
-	.section	.rodata.str1.1,"aMS",@progbits,1
-__exc:
-	.string                         "An exception occured: "
-__exit:
-    .string                         "Process finished with exit code "
 .equ __exc_len,                     22
 .equ __exit_len,                    32
+
+	.text
+	.section	.rodata
+__exc:
+	.asciz                          "An exception occured: "
+
+	.text
+    .section	.rodata
+__exit:
+    .asciz                          "Process finished with exit code "
 
 .text
 .p2align 4,,15
@@ -65,7 +68,7 @@ movq    $STDERR, %r8
 call    _print_number@PLT
 call    _print_new_line@PLT
 popq    %rax
-call    _exit@PLT
+jmp     _pseudo_exit@PLT
 retq
 .cfi_endproc
 
@@ -327,24 +330,23 @@ jl      reverse.l1
 retq
 .cfi_endproc
 
-.global                             _exit
-.type                               _exit, @function
-_exit:
+.global                             _pseudo_exit
+.type                               _pseudo_exit, @function
+_pseudo_exit:
 .cfi_startproc
 pushq   %rax
-movq    $STDOUT, %r8
-movq    $STDOUT, %rdi
 movq    __exit@GOTPCREL(%rip), %rax
 movq    $__exit_len, %rbx
+movq    $STDOUT, %r8
 call    _print_string@PLT
 movq    (%rsp), %rax
 movq    $STDOUT, %r8
-movq    $STDOUT, %rdi
 call    _print_number@PLT
 call    _print_new_line@PLT
-movq    $SYS_EXIT, %rax
 popq    %rdi
-call    _make_syscall
+movq    $0, %rdi
+movq    $SYS_EXIT, %rax
+jmp     _make_syscall@PLT
 retq
 .cfi_endproc
 
