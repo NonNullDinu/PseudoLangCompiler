@@ -381,7 +381,6 @@ movq    $STDOUT, %r8
 call    _print_number@PLT
 call    _print_new_line@PLT
 popq    %rdi
-movq    $0, %rdi
 movq    $SYS_EXIT, %rax
 syscall
 .endif
