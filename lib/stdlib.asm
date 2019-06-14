@@ -29,6 +29,10 @@
 .equ __exc_len,                     22
 .equ __exit_len,                    32
 
+.ifdef WIN
+.extern
+.endif
+
 	.text
 	.section	.rodata
 __exc:
@@ -76,15 +80,24 @@ retq
 .type                               _print_char, @function
 _print_char:
 .cfi_startproc
+.ifdef WIN
+
+movq    %rax, %rcx
+movq    $1, %rdx
+call    _win_print_string@PLT
+call    _exception_if_rax_negative@PLT
+
+.else
 movq    %rax, %rsi
 movq    $SYS_WRITE, %rax
 movq    %r8, %rdi
 movq    $1, %rdx
 pushq   %r8
-call    _make_syscall@PLT
+syscall
 popq    %r8
 call    _exception_if_rax_negative@PLT
 mov     %rsi,%rax
+.endif
 ret
 .cfi_endproc
 
@@ -143,12 +156,21 @@ retq
 
 .type                               _internal_read, @function
 _internal_read:
+.ifdef WIN
+
+movq    %rax, %rdx
+movq    INTERNAL____READ@GOTPCREL(%rip), %rcx
+call    _win_internal_read@PLT
+call    _exception_if_rax_negative@PLT
+
+.else
 movq    %rax, %rdx
 movq    $SYS_READ, %rax
 movq    %r8, %rdi
 movq    INTERNAL____READ@GOTPCREL(%rip), %rsi
-call    _make_syscall@PLT
+syscall
 call    _exception_if_rax_negative@PLT
+.endif
 retq
 
 .global                             _exception_if_rax_negative
@@ -261,15 +283,16 @@ retq
 .type                               _f_ro_open, @function
 _f_ro_open:
 .cfi_startproc
+.ifdef WIN
+movq    %rax, %rcx
+call    _win_ro_open_file@PLT
+.else
 movq    $0, %rsi
 movq    %rax, %rdi
 movq    $SYS_OPEN, %rax
-call    _make_syscall@PLT
-cmpq    $0, %rax
-jl      f_ro_open.l1
-retq
-f_ro_open.l1:
-call    _exception@PLT
+syscall
+.endif
+call    _exception_if_rax_negative@PLT
 retq
 .cfi_endproc
 
@@ -277,16 +300,21 @@ retq
 .type                               _f_wo_open, @function
 _f_wo_open:
 .cfi_startproc
+.ifdef WIN
+movq %rax, %rcx
+call _win_wo_open_file@PLT
+.else
 movq    $577, %rsi # O_TRUNC | O_CREAT | O_WRONLY
 movq    %rbx, %rdx
 movq    %rax, %rdi
 movq    $SYS_OPEN, %rax
-call    _make_syscall@PLT
+syscall
 cmpq    $0x0, %rax
 jl      f_wo_open.l1
 retq
 f_wo_open.l1:
 call    _exception@PLT
+.endif
 retq
 .cfi_endproc
 
@@ -294,10 +322,15 @@ retq
 .type                               _f_close, @function
 _f_close:
 .cfi_startproc
+.ifdef WIN
+movq %rax, %rcx
+call _win_close@PLT
+.else
 movq    %rax, %rdi
 movq    $SYS_CLOSE, %rax
-call    _make_syscall@PLT
+syscall
 call    _exception_if_rax_negative@PLT
+.endif
 retq
 .cfi_endproc
 
@@ -334,6 +367,10 @@ retq
 .type                               _pseudo_exit, @function
 _pseudo_exit:
 .cfi_startproc
+.ifdef WIN
+movq    %rax, %rcx
+call    _win_exit@PLT
+.else
 pushq   %rax
 movq    __exit@GOTPCREL(%rip), %rax
 movq    $__exit_len, %rbx
@@ -346,7 +383,8 @@ call    _print_new_line@PLT
 popq    %rdi
 movq    $0, %rdi
 movq    $SYS_EXIT, %rax
-jmp     _make_syscall@PLT
+syscall
+.endif
 retq
 .cfi_endproc
 
@@ -356,23 +394,29 @@ _print_string:
 # rax = address of first char
 # rbx = size
 # r8 = target file descriptor
+.ifdef WIN
+movq %rax, %rcx
+movq %rbx, %rdx
+call _win_print_string@PLT
+.else
 movq    %r8, %rdi
 movq    %rax, %rsi
 movq    %rbx, %rdx
 pushq   %r8
 movq    $SYS_WRITE, %rax
-call    _make_syscall@PLT
+syscall
 popq    %r8
 or      %rax, %rax
 jns     printString.l1
 call    _exception@PLT
 printString.l1:
+.endif
 retq
 
 ## Template:
 # .globl <name>
 # .type <name>, @function
-# <name>:
+# <name
 #   .cfi_startproc
 #   <code>
 #   .cfi_endproc
@@ -475,34 +519,6 @@ _perfect.false:
 movq    $0, %rax
 retq
 .size                               _perfect, .-_perfect
-
-.global                             _make_syscall
-.type                               _make_syscall, @function
-_make_syscall:
-# Makes a simple linux syscall or transforms the linux syscall to one or more winapi calls if the symbol win is defined
-.ifdef win
-# switch (%rax){
-cmpq    $SYS_EXIT, %rax
-jne     _make_syscall.l2
-call    _win_exit@PLT # case SYS_EXIT:
-jmp     _make_syscall.l1
-_make_syscall.l2:
-
-_make_syscall.l1:
-.else
-syscall
-.endif
-retq
-
-.ifdef win
-.extern _ExitProcess@8
-.global                             _win_exit
-.type                               _win_exit, @function
-_win_exit:
-pushq   %rbx
-call    _ExitProcess@8
-retq
-.endif
 
 	.section    .rodata
 	.globl  digits

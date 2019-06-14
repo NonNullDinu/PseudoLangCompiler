@@ -17,6 +17,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 
 long long MERGE_MEMORY[1<<18];
 
@@ -72,3 +73,29 @@ void _merge_sort(register long long* a, register long long s){
 void _prepare_for_sort(register int (*comp)(void* a, void* b)){
 	comp_func = comp;
 }
+
+#ifdef WIN
+void _win_exit(int return_code){
+	exit(return_code);
+}
+
+int _win_ro_open_file(const char* file){
+	return fileno(fopen(file, "r"));
+}
+
+int _win_wo_open_file(const char* file){
+	return fileno(fopen(file, "w"));
+}
+
+int _win_internal_read(const char* b, int max_len, int fd){
+	return read(fd, (void*) b, max_len);
+}
+
+int _win_print_string(const char* b, int len, int fd){
+	return write (fd, b, len);
+}
+
+int _win_fclose(int fd){
+	return close(fd);
+}
+#endif

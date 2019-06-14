@@ -677,7 +677,15 @@ public class _LANG_COMPILER {
 					System.err.println("GAS:\n" + msg);
 					System.exit(p.exitValue());
 				}
-				p = Runtime.getRuntime().exec(new String[]{"ld", "-o", target_binary_file, "-dynamic-linker", "/lib/ld-linux-x86-64.so.2", "/usr/lib/crt1.o", "/usr/lib/crti.o", "-lc", "pseudo.o", "/usr/lib/crtn.o", "-lpseudo-std"});
+				if (System.getProperty("os.name").equals("Linux"))
+					p = Runtime.getRuntime().exec(new String[]{"ld", "-o", target_binary_file, "-dynamic-linker", "/lib/ld-linux-x86-64.so.2", "/usr/lib/crt1.o", "/usr/lib/crti.o", "-lc", "pseudo.o", "/usr/lib/crtn.o", "-lpseudo-std"});
+				else
+					p = Runtime.getRuntime().exec(new String[]{"ld"/*.exe ???*/, "-o", target_binary_file, "-dynamic-linker",
+							"/lib/ld-linux-x86-64.so.2", "/usr/lib/crt1.o", "/usr/lib/crti.o", /* replace these */
+							"-lc", "pseudo.o",
+							"/usr/lib/crtn.o", /* and this */
+							/* with windows equivalents */
+							"-lpseudo-std"});
 				p.waitFor();
 				if (p.exitValue() != 0) {
 					InputStream inr = p.getErrorStream();
@@ -685,7 +693,9 @@ public class _LANG_COMPILER {
 					System.err.println("LD:\n" + msg);
 					System.exit(p.exitValue());
 				}
-				p = Runtime.getRuntime().exec(new String[]{"rm", "pseudo.o"});
+				if (System.getProperty("os.name").equals("Linux"))
+					p = Runtime.getRuntime().exec(new String[]{"rm", "pseudo.o"});
+				else p = Runtime.getRuntime().exec(new String[]{"del", "pseudo.o"});
 				p.waitFor();
 				if (p.exitValue() != 0) {
 					InputStream inr = p.getErrorStream();

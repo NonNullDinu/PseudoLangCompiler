@@ -1,20 +1,25 @@
 PACKAGE = pseudo-runtime-lib
 VERSION = 1.0
 SO_VERSION = 0
-
+AS = as
+AS_OPTS = --defsym WIN=1
+CC = gcc
+CC_OPTS = -O3 -S -fPIC -DWIN
+LINKER = gcc
+LINKER_SHARED_OPTS = -shared
 all: libpseudo-std.so
 
 libpseudo-std.so: stdlib.o stdlib.o2
-	gcc -shared -o $@ $^
+	$(LINKER) $(LINKER_SHARED_OPTS) -o $@ $^
 
-stdlib.o: stdlib.asm
-	as -o $@ $<
+%.o: %.asm
+	$(AS) $(AS_OPTS) -o $@ $<
 
-stdlib.o2: stdlib.s
-	as -o $@ $<
+%.o2: %.s
+	$(AS) $(AS_OPTS) -o $@ $<
 
-stdlib.s: stdlib.c
-	gcc -O3 -S -fPIC $<
+%.s: %.c
+	$(CC) $(CC_OPTS) $<
 
 clean:
 	rm -f libpseudo-std.so stdlib.o stdlib.o2 stdlib.s
