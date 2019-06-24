@@ -2,9 +2,9 @@ PACKAGE = pseudo-runtime-lib
 VERSION = 1.0
 SO_VERSION = 0
 AS = as
-AS_OPTS = --defsym WIN=1
+AS_OPTS =
 CC = gcc
-CC_OPTS = -O3 -S -fPIC -DWIN
+CC_OPTS = -O3 -S -fPIC
 LINKER = gcc
 LINKER_SHARED_OPTS = -shared
 all: libpseudo-std.so

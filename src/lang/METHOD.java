@@ -19,8 +19,12 @@ package lang;
 
 import main._LANG_COMPILER;
 import tokens.*;
+import variables.DATA_TYPE;
 
 import java.util.Objects;
+
+import static main._LANG_COMPILER.AssemblyMake.value;
+import static main._LANG_COMPILER.preparations;
 
 public enum METHOD {
 	@SuppressWarnings("unused")
@@ -71,9 +75,9 @@ public enum METHOD {
 					asm.append("\tmovq $0, %r8\n");
 				_LANG_COMPILER.rec_ind = 0;
 				asm.append("\tcall _read_value@PLT\n\tpushq %rax\n");
-				_LANG_COMPILER.preparations = "";
-				String v = _LANG_COMPILER.AssemblyMake.value(tk[0]);
-				asm.append(_LANG_COMPILER.preparations).append("\tpopq %rax\n\tmovq %rax, ").append(v).append("//POINTER\n");
+				preparations = "";
+				String v = value(tk[0]);
+				asm.append(preparations).append("\tpopq %rax\n\tmovq %rax, ").append(v).append("//POINTER\n");
 			}
 		}
 		return asm.toString();
@@ -105,9 +109,9 @@ public enum METHOD {
 					asm.append("\tcall _print_new_line@PLT\n");
 			} else {
 				_LANG_COMPILER.rec_ind = 0;
-				_LANG_COMPILER.preparations = "";
+				preparations = "";
 				String v = _LANG_COMPILER.AssemblyMake.valueInstructions(a);
-				asm.append(_LANG_COMPILER.preparations).append(v).append("\tmov %r10, %rax\n\tcall _print_number@PLT\n");
+				asm.append(preparations).append(v).append("\tmov %r10, %rax\n\tcall _print_number@PLT\n");
 			}
 		}
 		return asm.toString();
@@ -228,25 +232,55 @@ public enum METHOD {
 	@SuppressWarnings("unused")
 	PRIME((m, argTokens) -> {
 		_LANG_COMPILER.rec_ind = 0;
-		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rax\n\tcall _prime@PLT\n\tmovq %rax, " + _LANG_COMPILER.AssemblyMake.value(argTokens[1][0]) + "\n";
+		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rax\n\tcall _prime@PLT\n\tmovq %rax, " + value(argTokens[1][0]) + "\n";
 	}),
 
 	@SuppressWarnings("unused")
 	DIV_SUM((m, argTokens) -> {
 		//1 - value
 		//2 - idf of result target
-		_LANG_COMPILER.preparations = "";
-		String v = _LANG_COMPILER.AssemblyMake.value(argTokens[1][0]);
+		preparations = "";
+		String v = value(argTokens[1][0]);
 		_LANG_COMPILER.rec_ind = 0;
-		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rbx\n\tcall _div_sum@PLT\n\tpushq %rcx\n" + _LANG_COMPILER.preparations + "\tpopq %rcx\n\tmovq %rcx, " + v + "\n";
+		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rbx\n\tcall _div_sum@PLT\n\tpushq %rcx\n" + preparations + "\tpopq %rcx\n\tmovq %rcx, " + v + "\n";
 	}),
 
 	@SuppressWarnings("unused")
 	PERFECT((m, argTokens) -> {
-		_LANG_COMPILER.preparations = "";
-		String v = _LANG_COMPILER.AssemblyMake.value(argTokens[1][0]);
+		preparations = "";
+		String v = value(argTokens[1][0]);
 		_LANG_COMPILER.rec_ind = 0;
-		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rax\n\tcall _perfect@PLT\n\tpushq %rax\n" + _LANG_COMPILER.preparations + "\tpopq %rax\n\tmovq %rax, " + v + "\n";
+		return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmovq %r10, %rax\n\tcall _perfect@PLT\n\tpushq %rax\n" + preparations + "\tpopq %rax\n\tmovq %rax, " + v + "\n";
+	}),
+
+	@SuppressWarnings("unused")
+	DECLARE((m, argTokens) -> {
+		TypeToken tt = (TypeToken) argTokens[0][0];
+		DATA_TYPE type = tt.data_type();
+		StringBuilder asm = new StringBuilder();
+		for (int i = 1; i < argTokens.length; i++) {
+			_LANG_COMPILER.VarManager.VAR_ var = new _LANG_COMPILER.VarManager.VAR_(((IdentifierToken) argTokens[i][0]).identifier, type);
+			_LANG_COMPILER.vars.add(var);
+			IdentifierToken.identifiers.forEach((IdentifierToken id) -> {
+				if (id.var == null && var.name.equals(id.identifier)) {
+					id.var = var;
+					id.data_type = var.type;
+				}
+			});
+			String trueName = "var_" + _LANG_COMPILER.var_ind;
+			_LANG_COMPILER.memory_values.put(trueName, 0);
+			_LANG_COMPILER.memory_constant.put(trueName, false);
+			_LANG_COMPILER.memory_required.put(trueName, true);
+			_LANG_COMPILER.var_indices.put(var.name, _LANG_COMPILER.var_ind++);
+			if (argTokens[i].length > 1 && argTokens[i][1] instanceof AssignmentToken) {
+				_LANG_COMPILER.rec_ind = 0;
+				asm.append("CLEAR_CACHE\n");
+				asm.append(_LANG_COMPILER.AssemblyMake.valueInstructions(_LANG_COMPILER.tokensFrom(argTokens[i], 2)));
+				asm.append("movq %r10, var_").append(_LANG_COMPILER.var_indices.get(((IdentifierToken) argTokens[i][0]).identifier)).append('\n');
+				asm.append("CLEAR_CACHE\n");
+			}
+		}
+		return asm.toString();
 	});
 	private CALLBACK callback;
 

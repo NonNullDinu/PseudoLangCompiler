@@ -36,7 +36,7 @@ import java.util.regex.Pattern;
 public class _LANG_COMPILER {
 	private static final int OPT_MAX = 32;
 	public static int strCode = 0;
-	private static final List<VarManager.VAR_> vars = new ArrayList<>();
+	public static final List<VarManager.VAR_> vars = new ArrayList<>();
 	private static final List<VarManager.VAR_> dataVars = new ArrayList<>();
 	private static int tg = 1;
 	private static int cond_code = 0;
@@ -56,15 +56,16 @@ public class _LANG_COMPILER {
 	private static Map<String, Integer> registers_values = new HashMap<>();
 	private static Map<String, REGISTER> registerMap = new HashMap<>();
 	private static String regs = "rax%eax%ax%al%rcx%ecx%cx%cl%rdx%edx%dx%dl%rbx%ebx%bx%bl%rsi%esi%si%sil%rdi%edi%di%dil%rsp%esp%sp%spl%rbp%ebp%bp%bpl%r8%r8d%r8w%r8b%r9%r9d%r9w%r9b%r10%r10d%r10w%r10b%r11%r11d%r11w%r11b%r12%r12d%r12w%r12b%r13%r13d%r13w%r13b%r14%r14d%r14w%r14b%r15%r15d%r15w%r15b".replaceAll("%", " ");
-	private static Map<String, Boolean> memory_constant = new HashMap<>();
-	private static Map<String, Integer> memory_values = new HashMap<>();
+	public static Map<String, Boolean> memory_constant = new HashMap<>();
+	public static Map<String, Integer> memory_values = new HashMap<>();
 	private static List<OptimizationStrategy> optimizationStrategies = new ArrayList<>();
 	private static Map<String, Boolean> register_required = new HashMap<>();
-	private static Map<String, Boolean> memory_required = new HashMap<>();
-	private static int var_ind = 0;
+	public static Map<String, Boolean> memory_required = new HashMap<>();
+	public static int var_ind = 0;
 	private static final String INDEX_REGISTER = "%rdi";
 	public static String preparations; // NEEDED FOR WORKING WITH ARRAYS
 	private static int alignment = 1;
+	private static String working_directory;
 
 	public static void addNewVar(String name, String value) {
 		dataVars.add(new VarManager.VAR_(name, DATA_TYPE.STRING, value));
@@ -223,7 +224,7 @@ public class _LANG_COMPILER {
 				spl[i] = spl[i].substring(1);
 			if (spl[i].contains("###"))
 				spl[i] = spl[i].split("###")[0];
-			parsed_src.append(spl[i]).append("\n");
+			parsed_src.append(spl[i].replaceAll("\\r", "")).append("\n");
 		}
 		if (!spl[spl.length - 1].startsWith("exit"))
 			parsed_src.append("exit 0\n");
@@ -241,6 +242,7 @@ public class _LANG_COMPILER {
 		program_file_name = "pseudo.psl";
 		asm_source_file = "pseudo.asm";
 		target_binary_file = "pseudo";
+		working_directory = "";
 		for (int i = 0; i < args.length; i++)
 			switch (args[i]) {
 				case "-src":
@@ -255,12 +257,22 @@ public class _LANG_COMPILER {
 					i++;
 					asm_source_file = args[i];
 					break;
+				case "-wd":
+					i++;
+					working_directory = args[i];
+					break;
 			}
 		readProgram();
 		tokenizeProgram();
 		AssemblyMake.makeAssembly();
 		Optimizer.optimizeAssembly();
 		AssemblyMake.compileAssembly();
+	}
+
+	public static Token[] tokensFrom(Token[] tokens, int begin) {
+		Token[] t = new Token[tokens.length - begin];
+		System.arraycopy(tokens, begin, t, 0, t.length);
+		return t;
 	}
 
 	public static class AssemblyMake {
@@ -541,9 +553,9 @@ public class _LANG_COMPILER {
 								a = 8 * cache_ptr;
 								if (depth == 0) {
 									if (((OperatorToken) valueTokens[i]).mop == OperatorToken.Math_Operator.LOGIC_AND) {
-										asm.append("\tCMPQ $0, INTERNAL____CACHE+a\n\tJE ").append(jumpFalseLabel).append("\n");
+										asm.append("\tCMPQ $0, INTERNAL____CACHE+").append(a).append("\n\tJE ").append(jumpFalseLabel).append("\n");
 									} else if (((OperatorToken) valueTokens[i]).mop == OperatorToken.Math_Operator.LOGIC_OR) {
-										asm.append("\tCMPQ $0, INTERNAL____CACHE+a\n\tJNE ").append(jumpTrueLabel).append("\n");
+										asm.append("\tCMPQ $0, INTERNAL____CACHE+").append(a).append("\n\tJNE ").append(jumpTrueLabel).append("\n");
 									}
 								}
 								asm.append(valueInstructions(tokens2));
@@ -669,7 +681,7 @@ public class _LANG_COMPILER {
 				e.printStackTrace();
 			}
 			try {
-				Process p = Runtime.getRuntime().exec(new String[]{"as", asm_source_file, "-o", "pseudo.o"});
+				Process p = Runtime.getRuntime().exec(new String[]{"as", asm_source_file, "-o", working_directory + "pseudo.o"});
 				p.waitFor();
 				if (p.exitValue() != 0) {
 					InputStream inr = p.getErrorStream();
@@ -678,7 +690,7 @@ public class _LANG_COMPILER {
 					System.exit(p.exitValue());
 				}
 				if (System.getProperty("os.name").equals("Linux"))
-					p = Runtime.getRuntime().exec(new String[]{"ld", "-o", target_binary_file, "-dynamic-linker", "/lib/ld-linux-x86-64.so.2", "/usr/lib/crt1.o", "/usr/lib/crti.o", "-lc", "pseudo.o", "/usr/lib/crtn.o", "-lpseudo-std"});
+					p = Runtime.getRuntime().exec(new String[]{"ld", "-o", target_binary_file, "-dynamic-linker", "/lib/ld-linux-x86-64.so.2", "/usr/lib/crt1.o", "/usr/lib/crti.o", "-lc", working_directory + "pseudo.o", "/usr/lib/crtn.o", "-lpseudo-std"});
 				else
 					p = Runtime.getRuntime().exec(new String[]{"ld"/*.exe ???*/, "-o", target_binary_file, "-dynamic-linker",
 							"/lib/ld-linux-x86-64.so.2", "/usr/lib/crt1.o", "/usr/lib/crti.o", /* replace these */
@@ -694,7 +706,7 @@ public class _LANG_COMPILER {
 					System.exit(p.exitValue());
 				}
 				if (System.getProperty("os.name").equals("Linux"))
-					p = Runtime.getRuntime().exec(new String[]{"rm", "pseudo.o"});
+					p = Runtime.getRuntime().exec(new String[]{"rm", working_directory + "pseudo.o"});
 				else p = Runtime.getRuntime().exec(new String[]{"del", "pseudo.o"});
 				p.waitFor();
 				if (p.exitValue() != 0) {
@@ -969,7 +981,7 @@ public class _LANG_COMPILER {
 				}
 			}
 
-			for (ASMOP op : OPERATIONS) op.print();
+//			for (ASMOP op : OPERATIONS) op.print();
 			for (int i = OPERATIONS.size() - 1; i >= 0; i--) {
 				ASMOP op = OPERATIONS.get(i);
 				if (op.isLabel || op.isJump) {
@@ -1329,12 +1341,16 @@ public class _LANG_COMPILER {
 		private static Token[] tokenize(String lines) {
 			List<Token> tokens = new ArrayList<>();
 			while (!lines.isBlank()) {
-				String t = Objects.requireNonNull(nextToken(lines));
-				Token tk = getToken(t);
-				if (tk == null)
+				String t = nextToken(lines);
+				if (t == null)
 					System.out.println(lines);
-				lines = lines.substring(lines.indexOf(t) + t.length());
-				tokens.add(tk);
+				else {
+					Token tk = getToken(t);
+					if (tk == null)
+						System.out.println(lines);
+					lines = lines.substring(lines.indexOf(t) + t.length());
+					tokens.add(tk);
+				}
 			}
 			return tokens.toArray(new Token[0]);
 		}
@@ -1665,11 +1681,11 @@ public class _LANG_COMPILER {
 		}
 
 		private static String nextToken(String s) {
-			while (s.startsWith(" ") || s.startsWith("\t"))
+			while (s.startsWith(" ") || s.startsWith("\t") || s.startsWith("\r"))
 				s = s.substring(1);
 			if (s.startsWith("\n"))
 				return "\n";
-			if (s.matches("^\\d+(.|\\n)*$")) {
+			if (s.matches("^\\d+(.|\\n|\\r)*$")) {
 				int i;
 				char c = s.charAt(0);
 				for (i = 1; i < s.length() && (isDigit(c) || c == '.'); i++) {
@@ -1694,7 +1710,7 @@ public class _LANG_COMPILER {
 						return td;
 					}
 
-			if (s.matches("^[a-zA-Z_][a-zA-Z0-9_]*(.|\\n)*$")) {
+			if (s.matches("^[a-zA-Z_][a-zA-Z0-9_]*(.|\\n|\\r)*$")) {
 				int i;
 				char c = s.charAt(0);
 				for (i = 1; i < s.length() && (Character.isLetterOrDigit(c) || c == '_'); i++) {
@@ -1721,11 +1737,11 @@ public class _LANG_COMPILER {
 
 		public static class VAR_ {
 			public final String name;
-			private final DATA_TYPE type;
+			public final DATA_TYPE type;
 			int size = 1;
 			private String value;
 
-			VAR_(String name, DATA_TYPE type) {
+			public VAR_(String name, DATA_TYPE type) {
 				this.name = name;
 				this.type = type;
 			}

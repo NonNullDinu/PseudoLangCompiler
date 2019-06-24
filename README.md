@@ -18,6 +18,18 @@ Note: in the syntax that follows:
 
 - Parts that are not enclosed mean that they must be left just as they are
 - This is case sensitive and so the token <code>if</code> will be treated differently than <code>iF</code>
+
+### Declaring variables
+Syntax:
+<pre>&lt;type> &lt;var_name>[= &lt;value>]</pre>, where type is one of the following:
+- <code>int</code> for integer types
+- <code>file_stream</code> for file descriptors
+- <code>pointer</code> for arrays
+
+The value can only be assigned to integer types.
+
+This method only accepts one variable declared / line, see [declare](#declare)
+
 ### Calling functions
 The syntax for calling a function is:
 <pre>&lt;name> [arg1[,arg2[,arg3[,...]]]]</pre>
@@ -74,6 +86,12 @@ Finishes execution with the code of the first argument
 Syntax:
 <pre>exit [arg1]</pre>
 arg1 defaults to 0 when not present.
+
+## Declare
+The method of declaring multiple variables in a single line is as follows:
+<pre>declare &lt;type>, &lt;var_1>[ = &lt;value1>][, var2[ = &lt;value2>][, var_3 [ = &lt;value3>] [, ...]]]</pre>
+
+It is equivalent to declaring each variable (with or without the initial value) on its own line, but it is also considered a function by the compiler for the most part.
 
 ## Writing to the console
 Syntax:

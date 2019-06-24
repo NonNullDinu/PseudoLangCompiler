@@ -1,31 +1,18 @@
-int n
-int p
-int i
-int x
-int k
-int ret = 0
-pointer arr
-file_stream f
+declare int, a, b, c, i, j, z, k=0
 begin
-	allocate int, arr, 65536
-	open file f, "pseudo.in", read only
-	read file f, n
-	k <- 1
-	for i <- 1, n do
+	read a, b, c
+	for i <- a, b do
 	begin
-		read file f, x
-		prime x, p
-		if(p == true) then
+		for j <- i, c - i do
 		begin
-			arr[k] <- x
-			k <- k + 1
+			z <- c - i - j
+			if(j <= z && z <= b) then
+			begin
+				k <- k + 1
+				write "{", i, ",", j, ",", z, "}", "\n"
+			end
 		end
 	end
-	close file f
-	k <- k-1
-	reverse_sort arr+1, k
-	open file f, "pseudo.out", write only, 744
-	for i <- 1, k do write file f, arr[i], " "
-	close file f
+	if(k == 0)then write "doesn't exist", "\n"
 end
 exit
