@@ -168,7 +168,7 @@ call    _win_internal_read@PLT
 call    _exception_if_rax_negative@PLT
 
 .else
-movq    %rax, %rdx
+movq    %rdi, %rdx
 movq    $SYS_READ, %rax
 movq    %r8, %rdi
 movq    INTERNAL____READ@GOTPCREL(%rip), %rsi
@@ -288,7 +288,7 @@ _read_value:
         cmpl    %r13d, %ebx
         jl      ._read_valueL2
         movl    $0, %ebx
-        movl    $65536, %eax
+        movl    $65536, %edi
         call    _internal_read@PLT
         movl    %eax, %r13d
         movq    INTERNAL____READ_PTR@GOTPCREL(%rip), %rax

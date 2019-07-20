@@ -20,7 +20,7 @@ package tokens;
 import variables.DATA_TYPE;
 
 public class TypeToken extends Token {
-	private final String type;
+	public final String type;
 
 	public TypeToken(String type) {
 		this.type = type;
@@ -40,8 +40,15 @@ public class TypeToken extends Token {
 				return DATA_TYPE.SHORT_INT;
 			case "pointer":
 				return DATA_TYPE.POINTER;
-			default:
-				return null;
 		}
+		if (type.startsWith("array["))
+			return DATA_TYPE.POINTER;
+		else return null;
+	}
+
+	public DATA_TYPE arrayElementsType() {
+		if (type.matches("^array\\[.*]$"))
+			return new TypeToken(type.substring(type.indexOf('[') + 1, type.lastIndexOf(']'))).data_type();
+		else return null;
 	}
 }

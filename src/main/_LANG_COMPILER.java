@@ -38,6 +38,15 @@ public class _LANG_COMPILER {
 	public static int strCode = 0;
 	public static final List<VarManager.VAR_> vars = new ArrayList<>();
 	private static final List<VarManager.VAR_> dataVars = new ArrayList<>();
+	private static final String[] keywords = {
+			"while", "for", "do", "if", "then", "else", "begin", "end",
+			"repeat", "until", "==", "=", "<-", "<>", "<=", "<<", "<", "{", "}", ",",
+			"float", "file_stream", "file", "pointer", "array", "of type", "de tipul", "(", ")", "[", "]",
+			"-", "+", "*", "%", "/", "&&", "&", "and", "si", "||", "or", "sau", "|",
+			"^", ">=", ">>", "!=", "!", ">",
+			"daca", "cat timp", "pentru", "inceput", "sfarsit", "executa",
+			"atunci", "real", "intreg", "repeta", "pana cand", "int", "true", "false", "from", "to", "as", "console"
+	};
 	private static int tg = 1;
 	private static int cond_code = 0;
 	private static String program_file_name;
@@ -71,15 +80,11 @@ public class _LANG_COMPILER {
 		dataVars.add(new VarManager.VAR_(name, DATA_TYPE.STRING, value));
 	}
 
-	private static final String[] keywords = {
-			"while", "for", "do", "if", "then", "else", "begin", "end",
-			"repeat", "until", "==", "=", "<-", "<>", "<=", "<<", "<", "{", "}", ",", "float",
-			"file_stream", "file", "pointer", "(", ")", "[", "]",
-			"-", "+", "*", "%", "/", "&&", "&", "and", "si", "||", "or", "sau", "|",
-			"^", ">=", ">>", "!=", "!", ">",
-			"daca", "cat timp", "pentru", "inceput", "sfarsit", "execita",
-			"atunci", "real", "intreg", "repeta", "pana cand", "int", "true", "false"
-	};
+	public static int arr_mem_ind = 0;
+
+	public static void addNewBssVar(String name, DATA_TYPE type) {
+		vars.add(new VarManager.VAR_(name, type));
+	}
 
 	private static String jumpFalseLabel;
 	private static String jumpTrueLabel;
@@ -395,7 +400,10 @@ public class _LANG_COMPILER {
 			}
 			StringBuilder asm_vars = new StringBuilder(".section .bss\n\t.lcomm INTERNAL____CACHE, 524288\n");
 			for (VarManager.VAR_ var : vars) {
-				asm_vars.append("\t.lcomm var_").append(var_indices.get(var.name)).append("\t, ").append(var.type.bytesize * var.size).append("\n");
+				if (var.name.startsWith("arr_mem_"))
+					asm_vars.append("\t.lcomm ").append(var.name).append("\t, ").append(var.type.bytesize * var.size).append("\n");
+				else
+					asm_vars.append("\t.lcomm var_").append(var_indices.get(var.name)).append("\t, ").append(var.type.bytesize * var.size).append("\n");
 			}
 			assembly = new StringBuilder(asm_vars + "\n\n" + assembly.toString());
 			asm_vars = new StringBuilder("\n\n.section .rodata\n");
@@ -734,16 +742,17 @@ public class _LANG_COMPILER {
 			} else if (token instanceof LogicConstantValueToken)
 				return ((LogicConstantValueToken) token).v ? "$1" : "$0";
 			else if (token instanceof ArrayIdentifier) {
-				if (isConstant(((ArrayIdentifier) token).indexTokens))
-					return "var_" + var_indices.get(((ArrayIdentifier) token).array.name) + "+" + (8 * Objects.requireNonNull(evaluate(((ArrayIdentifier) token).indexTokens)).vi);
-				else {
+				if (isConstant(((ArrayIdentifier) token).indexTokens)) {
+					preparations = "\tmovq var_" + var_indices.get(((ArrayIdentifier) token).array.name) + ", %r10\n";
+					return (8 * Objects.requireNonNull(evaluate(((ArrayIdentifier) token).indexTokens)).vi) + "(%r10)";
+				} else {
 					int temprecind = rec_ind, inci = internal_cache_index;
 					rec_ind = 0;
-					preparations = valueInstructions(((ArrayIdentifier) token).indexTokens) + "\tmovq %r10, " + INDEX_REGISTER + "\n";
+					preparations = valueInstructions(((ArrayIdentifier) token).indexTokens) + "\tmovq %r10, " + INDEX_REGISTER + "\n\tmovq var_" + var_indices.get(((ArrayIdentifier) token).array.name) + ", %r10\n";
 					rec_ind = temprecind;
 					internal_cache_index = inci;
 					cache_ptr = internal_cache_index - 1;
-					return "var_" + var_indices.get(((ArrayIdentifier) token).array.name) + "(," + INDEX_REGISTER + "," + ((ArrayIdentifier) token).array.type.bytesize + ")";
+					return "(%r10," + INDEX_REGISTER + "," + ((ArrayIdentifier) token).array.type.bytesize + ")";
 				}
 			} else return "";
 		}
@@ -934,11 +943,13 @@ public class _LANG_COMPILER {
 					String check = asmop.arg1.value;
 					String check2 = asmop.arg2.value;
 					ASMOP prevop = OPERATIONS.get(i - 1);
-					if (check.contains(INDEX_REGISTER) && !check.equals(INDEX_REGISTER) && prevop.arg2.value.equals(INDEX_REGISTER)) {
-						check = check.replaceAll(INDEX_REGISTER, prevop.arg1.value.replace("$", ""));
-					}
-					if (check2.contains(INDEX_REGISTER) && !check2.equals(INDEX_REGISTER) && prevop.arg2.value.equals(INDEX_REGISTER)) {
-						check2 = check2.replaceAll(INDEX_REGISTER, prevop.arg1.value.replace("$", ""));
+					if (prevop.arg2 != null) {
+						if (check.contains(INDEX_REGISTER) && !check.equals(INDEX_REGISTER) && prevop.arg2.value.equals(INDEX_REGISTER)) {
+							check = check.replaceAll(INDEX_REGISTER, prevop.arg1.value.replace("$", ""));
+						}
+						if (check2.contains(INDEX_REGISTER) && !check2.equals(INDEX_REGISTER) && prevop.arg2.value.equals(INDEX_REGISTER)) {
+							check2 = check2.replaceAll(INDEX_REGISTER, prevop.arg1.value.replace("$", ""));
+						}
 					}
 					if (asmop.OP.matches("^mov(zx)?(.?)$")) {
 						operand.value_is_constant = isConstant(check);
@@ -1002,13 +1013,15 @@ public class _LANG_COMPILER {
 					String check2 = op.arg2.value;
 					ASMOP prevop = OPERATIONS.get(i - 1);
 					boolean requiresindex = false;
-					if (check.contains(INDEX_REGISTER) && !check.equals(INDEX_REGISTER) && prevop.arg2.value.equals(INDEX_REGISTER)) {
-						check = check.replaceAll(INDEX_REGISTER, prevop.arg1.value.replace("$", ""));
-						requiresindex = true;
-					}
-					if (check2.contains(INDEX_REGISTER) && !check2.equals(INDEX_REGISTER) && prevop.arg2.value.equals(INDEX_REGISTER)) {
-						check2 = check2.replaceAll(INDEX_REGISTER, prevop.arg1.value.replace("$", ""));
-						requiresindex = true;
+					if (prevop.arg2 != null) {
+						if (check.contains(INDEX_REGISTER) && !check.equals(INDEX_REGISTER) && prevop.arg2.value.equals(INDEX_REGISTER)) {
+							check = check.replaceAll(INDEX_REGISTER, prevop.arg1.value.replace("$", ""));
+							requiresindex = true;
+						}
+						if (check2.contains(INDEX_REGISTER) && !check2.equals(INDEX_REGISTER) && prevop.arg2.value.equals(INDEX_REGISTER)) {
+							check2 = check2.replaceAll(INDEX_REGISTER, prevop.arg1.value.replace("$", ""));
+							requiresindex = true;
+						}
 					}
 					if ((op.comment == null || !(op.comment.equals("POINTER") || op.comment.equals("NO_DELETE"))) && isNotRequired(check2)) {
 						OPERATIONS.remove(i);
@@ -1023,13 +1036,15 @@ public class _LANG_COMPILER {
 					String check2 = op.arg2.value;
 					ASMOP prevop = OPERATIONS.get(i - 1);
 					boolean requiresindex = false;
-					if (check.contains(INDEX_REGISTER) && !check.equals(INDEX_REGISTER) && prevop.arg2.value.equals(INDEX_REGISTER)) {
-						check = check.replaceAll(INDEX_REGISTER, prevop.arg1.value.replace("$", ""));
-						requiresindex = true;
-					}
-					if (check2.contains(INDEX_REGISTER) && !check2.equals(INDEX_REGISTER) && prevop.arg2.value.equals(INDEX_REGISTER)) {
-						check2 = check2.replaceAll(INDEX_REGISTER, prevop.arg1.value.replace("$", ""));
-						requiresindex = true;
+					if (prevop.arg2 != null) {
+						if (check.contains(INDEX_REGISTER) && !check.equals(INDEX_REGISTER) && prevop.arg2.value.equals(INDEX_REGISTER)) {
+							check = check.replaceAll(INDEX_REGISTER, prevop.arg1.value.replace("$", ""));
+							requiresindex = true;
+						}
+						if (check2.contains(INDEX_REGISTER) && !check2.equals(INDEX_REGISTER) && prevop.arg2.value.equals(INDEX_REGISTER)) {
+							check2 = check2.replaceAll(INDEX_REGISTER, prevop.arg1.value.replace("$", ""));
+							requiresindex = true;
+						}
 					}
 					if ((op.comment == null || !(op.comment.equals("POINTER") || op.comment.equals("NO_DELETE"))) && isNotRequired(check2)) {
 						OPERATIONS.remove(i);
@@ -1100,7 +1115,12 @@ public class _LANG_COMPILER {
 							setrequiredreg("%rbx", true);
 							break;
 						case "_prepare_for_sort@PLT":
+						case "_pseudo_lib_free@PLT":
 							setrequiredreg("%rdi", true);
+							break;
+						case "_pseudo_lib_malloc@PLT":
+							setrequiredreg("%rdi", true);
+							setrequiredreg("%rsi", true);
 							break;
 					}
 				} else if (op.OP.startsWith("push")) {
@@ -1278,7 +1298,7 @@ public class _LANG_COMPILER {
 		}
 	}
 
-	private static class Parser {
+	public static class Parser {
 		private static Statement[] getStatements(String lines) throws TokenException, ParsingError {
 			Token[] tokens = tokenize(lines);
 			int first_type_token_ind = -2, last_type_token_ind = -2;
@@ -1298,15 +1318,31 @@ public class _LANG_COMPILER {
 					last_type_token_ind = i;
 				}
 			}
+			for (int i = 0; i < tokens.length; i++) {
+				if (tokens[i] == null) continue;
+				if (tokens[i] instanceof FILE_TOKEN && tokens[i + 1] instanceof IdentifierToken) {
+					tokens[i] = new FILE_FULL_TOKEN(((IdentifierToken) tokens[i + 1]).identifier);
+					tokens[i + 1] = null;
+					i++;
+				}
+			}
+			for (int i = 0; i < tokens.length; i++) {
+				if (tokens[i] == null) continue;
+				if (tokens[i] instanceof TypeToken && ((TypeToken) tokens[i]).type.equals("array") && tokens[i + 1] instanceof BracketOpenToken && tokens[i + 2] instanceof TypeToken && tokens[i + 3] instanceof BracketClosedToken) {
+					tokens[i] = new TypeToken("array[" + ((TypeToken) tokens[i + 2]).type + "]");
+					tokens[i + 1] = tokens[i + 2] = tokens[i + 3] = null;
+					i += 3;
+				}
+			}
 			for (int i = tokens.length - 2; i >= 0; i--) {
-				if (tokens[i] instanceof IdentifierToken && tokens[i + 1] instanceof ArrayAccessBeginToken) {
+				if (tokens[i] instanceof IdentifierToken && tokens[i + 1] instanceof BracketOpenToken) {
 					int b = i + 2;
 					int j;
 					int d = 1;
 					for (j = b + 1; j < tokens.length; j++) {
-						if (tokens[j] instanceof ArrayAccessBeginToken) {
+						if (tokens[j] instanceof BracketOpenToken) {
 							d++;
-						} else if (tokens[j] instanceof ArrayAccessEndToken) {
+						} else if (tokens[j] instanceof BracketClosedToken) {
 							d--;
 							if (d == 0)
 								break;
@@ -1553,9 +1589,13 @@ public class _LANG_COMPILER {
 
 		private static Token[][] callParameterTokens(Token[] t, IndObj ind) {
 			int i = ind.ind + 1, j;
-			int args = 1;
+			int args = 1, d = 0;
 			for (j = i; j < t.length; j++) {
-				if (t[j] instanceof CommaToken)
+				if (t[j] instanceof ParenthesisOpenedToken)
+					d++;
+				else if (t[j] instanceof ParenthesisClosedToken)
+					d--;
+				else if (d == 0 && t[j] instanceof CommaToken)
 					args++;
 				else if (t[j] instanceof NewLineToken)
 					break;
@@ -1568,8 +1608,13 @@ public class _LANG_COMPILER {
 			int ptr = i;
 			for (int k = 0; k < args; k++) {
 				int ptr_b = ptr;
+				d = 0;
 				for (; ptr < j; ptr++) {
-					if (t[ptr] instanceof CommaToken) {
+					if (t[ptr] instanceof ParenthesisOpenedToken)
+						d++;
+					else if (t[ptr] instanceof ParenthesisClosedToken)
+						d--;
+					else if (d == 0 && t[ptr] instanceof CommaToken) {
 						break;
 					}
 				}
@@ -1579,6 +1624,41 @@ public class _LANG_COMPILER {
 				tokens[k] = tkn;
 			}
 			ind.ind = j + 1;
+			return tokens;
+		}
+
+		public static Token[][] split_by_commas(Token[] t) {
+			int i = 1, j;
+			if (t.length == 0) return null;
+			int args = 1, d = 0;
+			for (j = i; j < t.length; j++) {
+				if (t[j] instanceof ParenthesisOpenedToken)
+					d++;
+				else if (t[j] instanceof ParenthesisClosedToken)
+					d--;
+				else if (d == 0 && t[j] instanceof CommaToken)
+					args++;
+			}
+
+			Token[][] tokens = new Token[args][];
+			int ptr = i;
+			for (int k = 0; k < args; k++) {
+				int ptr_b = ptr;
+				d = 0;
+				for (; ptr < j; ptr++) {
+					if (t[ptr] instanceof ParenthesisOpenedToken)
+						d++;
+					else if (t[ptr] instanceof ParenthesisClosedToken)
+						d--;
+					else if (d == 0 && t[ptr] instanceof CommaToken) {
+						break;
+					}
+				}
+				Token[] tkn = new Token[ptr - ptr_b];
+				ptr++;
+				System.arraycopy(t, ptr_b, tkn, 0, tkn.length);
+				tokens[k] = tkn;
+			}
 			return tokens;
 		}
 
@@ -1647,7 +1727,7 @@ public class _LANG_COMPILER {
 				return new OperatorToken(OperatorToken.Math_Operator.BITWISE_AND);
 			else if (value.equals("(")) return new ParenthesisOpenedToken();
 			else if (value.equals(")")) return new ParenthesisClosedToken();
-			else if (value.matches("^(int|float|intreg|real|pointer)$")) return new TypeToken(value);
+			else if (value.matches("^(int|float|intreg|real|pointer|array)$")) return new TypeToken(value);
 			else if (value.equals("if") || value.equals("daca")) return new IfToken();
 			else if (value.equals("then") || value.equals("atunci")) return new ThenToken();
 			else if (value.equals("while") || value.equals("cat timp")) return new WhileToken();
@@ -1668,11 +1748,14 @@ public class _LANG_COMPILER {
 			else if (value.equals("file")) return new FILE_TOKEN();
 			else if (value.equals("repeat") || value.equals("repeta")) return new RepeatToken();
 			else if (value.equals("until") || value.equals("pana cand")) return new UntilToken();
+			else if (value.equals("of type") || value.equals("de tipul")) return new TYPE_SPECIFIER_TOKEN();
+			else if (value.equals("from") || value.equals("to")) return new FROM_TO_SPECIFIER_TOKEN();
+			else if (value.equals("as")) return new AS_TOKEN();
 			else if (value.matches("^[a-zA-Z_][a-zA-Z0-9_]*$")) return new IdentifierToken(value, null, null);
 			else if (value.equals("\n")) return new NewLineToken();
 			else if (value.equals("!")) return new UnaryOperatorToken(UnaryOperatorToken.OP.LOGIC_NOT);
-			else if (value.equals("[")) return new ArrayAccessBeginToken();
-			else if (value.equals("]")) return new ArrayAccessEndToken();
+			else if (value.equals("[")) return new BracketOpenToken();
+			else if (value.equals("]")) return new BracketClosedToken();
 			return null;
 		}
 
@@ -1733,6 +1816,20 @@ public class _LANG_COMPILER {
 					v.size = size;
 					return;
 				}
+		}
+
+		public static DATA_TYPE getVarType(String varname) {
+			for (VAR_ v : vars)
+				if (v.name.equals(varname))
+					return v.type;
+			return null;
+		}
+
+		public static DATA_TYPE getVarArrElemType(String varname) {
+			for (Array a : Array.arrays)
+				if (a.name.equals(varname))
+					return a.type;
+			return null;
 		}
 
 		public static class VAR_ {

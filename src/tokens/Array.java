@@ -9,6 +9,7 @@ public class Array {
 	public static final List<Array> arrays = new ArrayList<>();
 	public String name;
 	public DATA_TYPE type;
+	public String associated_memory;
 
 	public Array(String name) {
 		this.name = name;

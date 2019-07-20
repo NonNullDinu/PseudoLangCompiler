@@ -1,18 +1,20 @@
-declare int, a, b, c, i, j, z, k=0
+declare n, i of type int
+declare f of type file_stream
+declare vec of type array[int]
 begin
-	read a, b, c
-	for i <- a, b do
+	allocate vec, 100
+	open ("pseudo.in", read only) as file f
+	read n from file f
+	for i <- 1, n do
 	begin
-		for j <- i, c - i do
-		begin
-			z <- c - i - j
-			if(j <= z && z <= b) then
-			begin
-				k <- k + 1
-				write "{", i, ",", j, ",", z, "}", "\n"
-			end
-		end
+		read vec[i] from file f
 	end
-	if(k == 0)then write "doesn't exist", "\n"
+	close file f
+	i <- n
+	while (i > 0) do
+	begin
+		write vec[i], " "
+		i <- i - 1
+	end
 end
 exit

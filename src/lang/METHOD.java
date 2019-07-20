@@ -30,9 +30,9 @@ public enum METHOD {
 	@SuppressWarnings("unused")
 	EXIT((m, argTokens) -> {
 		if (argTokens != null && argTokens.length > 0) {
-			return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmov %r10, %rax\n\tcall _pseudo_exit@PLT\n";
+			return _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[0]) + "\tmov %r10, %rax\n\tjmp _pseudo_exit@PLT\n";
 		} else
-			return "\tmovq $0, %rax\n\tcall _pseudo_exit@PLT\n";
+			return "\tmovq $0, %rax\n\tjmp _pseudo_exit@PLT\n";
 	}),
 
 	@SuppressWarnings("unused")
@@ -66,19 +66,21 @@ public enum METHOD {
 	@SuppressWarnings("unused")
 	READ((m, argTokens) -> {
 		StringBuilder asm = new StringBuilder();
+		if (argTokens[argTokens.length - 1].length > 2 && argTokens[argTokens.length - 1][argTokens[argTokens.length - 1].length - 2] instanceof FROM_TO_SPECIFIER_TOKEN) {
+			asm.append("\tmovzxw var_").append(_LANG_COMPILER.var_indices.get(((FILE_FULL_TOKEN) argTokens[argTokens.length - 1][argTokens[argTokens.length - 1].length - 1]).var_name)).append(", %r8\n");
+			int lenm1 = argTokens.length - 1;
+			Token[] cpy = new Token[argTokens[lenm1].length - 1];
+			System.arraycopy(argTokens[lenm1], 0, cpy, 0, cpy.length);
+			argTokens[lenm1] = cpy;
+		} else asm.append("\tmov $0, %r8\n");
+
 		for (int i = 0; i < argTokens.length; i++) {
 			Token[] tk = argTokens[i];
-			if (i == 0 && tk[0] instanceof FILE_TOKEN) {
-				asm.append("\tmovzxw var_").append(_LANG_COMPILER.var_indices.get(((IdentifierToken) tk[1]).identifier)).append(", %r8\n");
-			} else {
-				if (i == 0)
-					asm.append("\tmovq $0, %r8\n");
-				_LANG_COMPILER.rec_ind = 0;
-				asm.append("\tcall _read_value@PLT\n\tpushq %rax\n");
-				preparations = "";
-				String v = value(tk[0]);
-				asm.append(preparations).append("\tpopq %rax\n\tmovq %rax, ").append(v).append("//POINTER\n");
-			}
+			_LANG_COMPILER.rec_ind = 0;
+			asm.append("\tcall _read_value@PLT\n\tpushq %rax\n");
+			preparations = "";
+			String v = value(tk[0]);
+			asm.append(preparations).append("\tpopq %rax\n\tmovq %rax, ").append(v).append("//POINTER\n");
 		}
 		return asm.toString();
 	}),
@@ -86,15 +88,16 @@ public enum METHOD {
 	@SuppressWarnings("unused")
 	WRITE((m, argTokens) -> {
 		StringBuilder asm = new StringBuilder();
+		if (argTokens[argTokens.length - 1].length >= 2 && argTokens[argTokens.length - 1][argTokens[argTokens.length - 1].length - 2] instanceof FROM_TO_SPECIFIER_TOKEN) {
+			asm.append("\tmovzxw var_").append(_LANG_COMPILER.var_indices.get(((FILE_FULL_TOKEN) argTokens[argTokens.length - 1][argTokens[argTokens.length - 1].length - 1]).var_name)).append(", %r8\n");
+			int lenm1 = argTokens.length - 1;
+			Token[] cpy = new Token[lenm1 - 1];
+			System.arraycopy(argTokens[lenm1], 0, cpy, 0, cpy.length);
+			argTokens[lenm1] = cpy;
+		} else asm.append("\tmov $1, %r8\n");
 
 		for (int i = 0; i < argTokens.length; i++) {
 			Token[] a = argTokens[i];
-			if (i == 0) {
-				if (a[0] instanceof FILE_TOKEN) {
-					asm.append("\tmovzxw var_").append(_LANG_COMPILER.var_indices.get(((IdentifierToken) a[1]).identifier)).append(", %r8\n");
-					continue;
-				} else asm.append("\tmov $1, %r8\n");
-			}
 			if (a[0] instanceof StringToken) {
 				if (!((StringToken) a[0]).str.equals("\"\\n\"")) {
 					_LANG_COMPILER.VarManager.VAR_ str = _LANG_COMPILER.lookupStringVar(".asciz " + ((StringToken) a[0]).str);
@@ -138,32 +141,46 @@ public enum METHOD {
 	@SuppressWarnings("unused")
 	OPEN(((m, argTokens) -> {
 		String asm = "";
-		if (argTokens[0][0] instanceof FILE_TOKEN) {
-			//argTokens[0][1] = name of variable
-			//argTokens[1][0] = name of file
-			//argTokens[2][0] = file access
-			//argTokens[3][0] = file permissions(not needed if argTokens[2][0] is "read only")
-			IdentifierToken name = ((IdentifierToken) argTokens[0][1]);
-			String file = ((StringToken) argTokens[1][0]).str;
-			FILE_ACCESS_TOKEN access = ((FILE_ACCESS_TOKEN) argTokens[2][0]);
+		int lastLength = argTokens[argTokens.length - 1].length;
+		if (argTokens[argTokens.length - 1][lastLength - 2] instanceof AS_TOKEN && argTokens[argTokens.length - 1][lastLength - 1] instanceof FILE_FULL_TOKEN) {
+			FILE_FULL_TOKEN fileToken = ((FILE_FULL_TOKEN) argTokens[argTokens.length - 1][lastLength - 1]);
+			String name = fileToken.var_name;
+			int size = 0;
+			int begin = 0, end = 0;
+			for (int i = 0; i < argTokens[0].length; i++) {
+				if (argTokens[0][i] instanceof ParenthesisOpenedToken) {
+					begin = i;
+				}
+				if (argTokens[0][i] instanceof ParenthesisClosedToken) {
+					end = i - 1;
+				}
+			}
+			size = end - begin + 1;
+			Token[] tkns = new Token[size];
+			System.arraycopy(argTokens[0], begin, tkns, 0, size);
+			Token[][] split = _LANG_COMPILER.Parser.split_by_commas(tkns);
+			if (split == null)
+				throw new NullPointerException("OPEN with no parameters provided");
+			String file = ((StringToken) split[0][0]).str;
+			FILE_ACCESS_TOKEN access = ((FILE_ACCESS_TOKEN) split[1][0]);
 			_LANG_COMPILER.addNewVar("file_" + ++_LANG_COMPILER.fileCode + "_path", ".asciz " + file);
 			if (access.access.equals(FILE_ACCESS.WRITE_ONLY)) {
-				if (argTokens.length >= 4) {
-					int perm = ((NumberToken) argTokens[3][0]).v;
+				if (split.length == 3) {
+					int perm = ((NumberToken) split[2][0]).v;
 					asm = "\tmovq $file_" + _LANG_COMPILER.fileCode + "_path, %rax\n" +
 							"\tmovq $0" + perm + ", %rbx\n" +
 							"\tcall " + access.access.func_open() + "\n" +
-							"\tmovw %ax, var_" + _LANG_COMPILER.var_indices.get(name.identifier) + "//NO_DELETE\n";
+							"\tmovw %ax, var_" + _LANG_COMPILER.var_indices.get(name) + "//NO_DELETE\n";
 				} else {
 					asm = "\tmovq $file_" + _LANG_COMPILER.fileCode + "_path, %rax\n" +
 							"\tmovq $0744, %rbx\n" + // Default is 0744
 							"\tcall " + access.access.func_open() + "\n" +
-							"\tmovw %ax, var_" + _LANG_COMPILER.var_indices.get(name.identifier) + "//NO_DELETE\n";
+							"\tmovw %ax, var_" + _LANG_COMPILER.var_indices.get(name) + "//NO_DELETE\n";
 				}
 			} else {
 				asm = "\tmovq $file_" + _LANG_COMPILER.fileCode + "_path, %rax\n" +
 						"\tcall " + access.access.func_open() + "\n" +
-						"\tmovw %ax, var_" + _LANG_COMPILER.var_indices.get(name.identifier) + "//NO_DELETE\n";
+						"\tmovw %ax, var_" + _LANG_COMPILER.var_indices.get(name) + "//NO_DELETE\n";
 			}
 		}
 		return asm;
@@ -179,18 +196,21 @@ public enum METHOD {
 	})),
 
 	@SuppressWarnings("unused")
-	ALLOCATE((m, argTokens) -> {
-		//argTokens[0] type
-		//argTokens[1] name(of type pointer)
-		//argTokens[2] size
-		TypeToken tt = argTokens[0][0] instanceof TypeToken ? ((TypeToken) argTokens[0][0]) : null;
-		CompositeTypeToken ctt = argTokens[0][0] instanceof CompositeTypeToken ? ((CompositeTypeToken) argTokens[0][0]) : null;
-		for (Array a : Array.arrays)
-			if (a.name.equals(((IdentifierToken) argTokens[1][0]).identifier))
-				a.setType(tt != null ? tt.data_type() : ctt != null ? ctt.data_type() : null);
-		_LANG_COMPILER.VarManager.setVarSize(((IdentifierToken) argTokens[1][0]).identifier, Objects.requireNonNull(_LANG_COMPILER.AssemblyMake.evaluate(argTokens[2])).vi);
-		return "";
+	STATIC_ALLOCATE((m, argTokens) -> {
+		int size = Objects.requireNonNull(_LANG_COMPILER.VarManager.getVarType(((IdentifierToken) argTokens[0][0]).identifier)).bytesize * Objects.requireNonNull(_LANG_COMPILER.AssemblyMake.evaluate(argTokens[1])).vi;
+		_LANG_COMPILER.addNewBssVar("arr_mem_" + (++_LANG_COMPILER.arr_mem_ind), _LANG_COMPILER.VarManager.getVarArrElemType(((IdentifierToken) argTokens[0][0]).identifier));
+		_LANG_COMPILER.VarManager.setVarSize("arr_mem_" + _LANG_COMPILER.arr_mem_ind, size);
+		return "\tmovq $arr_mem_" + _LANG_COMPILER.arr_mem_ind + ", var_" + _LANG_COMPILER.var_indices.get(((IdentifierToken) argTokens[0][0]).identifier) + "\n";
 	}),
+
+	@SuppressWarnings("unused")
+	DYNAMIC_ALLOCATE((m, argTokens) -> _LANG_COMPILER.AssemblyMake.valueInstructions(argTokens[1]) + "\tmovq %r10, %rsi\n\tmovq $" + Objects.requireNonNull(_LANG_COMPILER.VarManager.getVarType(((IdentifierToken) argTokens[0][0]).identifier)).bytesize + ", %rdi\n\tcall _pseudo_lib_malloc@PLT\n\tmovq %rax, var_" + _LANG_COMPILER.var_indices.get(((IdentifierToken) argTokens[0][0]).identifier) + "\n"),
+
+	@SuppressWarnings("unused")
+	DYNAMIC_DEALLOCATE((m, argTokens) -> "\tmovq var_" + _LANG_COMPILER.var_indices.get(((IdentifierToken) argTokens[0][0]).identifier) + ", %rdi\n\tcall _pseudo_lib_free@PLT\n"),
+
+	@SuppressWarnings("unused")
+	ALLOCATE((m, argTokens) -> STATIC_ALLOCATE.callback.assembly(m, argTokens)),
 
 	@SuppressWarnings("unused")
 	SORT(((m, argTokens) -> {
@@ -255,10 +275,16 @@ public enum METHOD {
 
 	@SuppressWarnings("unused")
 	DECLARE((m, argTokens) -> {
-		TypeToken tt = (TypeToken) argTokens[0][0];
+		TypeToken tt;
+		if (argTokens[argTokens.length - 1][(argTokens[argTokens.length - 1].length - 2)] instanceof TYPE_SPECIFIER_TOKEN)
+			tt = ((TypeToken) argTokens[argTokens.length - 1][(argTokens[argTokens.length - 1].length - 1)]);
+		else {
+			System.err.println("Type not specified, assuming int");
+			tt = new TypeToken("int");
+		}
 		DATA_TYPE type = tt.data_type();
 		StringBuilder asm = new StringBuilder();
-		for (int i = 1; i < argTokens.length; i++) {
+		for (int i = 0; i < argTokens.length; i++) {
 			_LANG_COMPILER.VarManager.VAR_ var = new _LANG_COMPILER.VarManager.VAR_(((IdentifierToken) argTokens[i][0]).identifier, type);
 			_LANG_COMPILER.vars.add(var);
 			IdentifierToken.identifiers.forEach((IdentifierToken id) -> {
@@ -267,6 +293,11 @@ public enum METHOD {
 					id.data_type = var.type;
 				}
 			});
+			for (Array array : Array.arrays) {
+				if (array.type == null && array.name.equals(var.name)) {
+					array.type = tt.arrayElementsType();
+				}
+			}
 			String trueName = "var_" + _LANG_COMPILER.var_ind;
 			_LANG_COMPILER.memory_values.put(trueName, 0);
 			_LANG_COMPILER.memory_constant.put(trueName, false);

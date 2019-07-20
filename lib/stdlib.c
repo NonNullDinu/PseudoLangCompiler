@@ -74,6 +74,14 @@ void _prepare_for_sort(register int (*comp)(void* a, void* b)){
 	comp_func = comp;
 }
 
+void* _pseudo_lib_malloc(long long type_byte_size/* rdi */, long long array_size /* rsi */){
+	return malloc(type_byte_size * array_size);
+}
+
+void _pseudo_lib_free(void* pointer/* rdi */){
+	free(pointer);
+}
+
 #ifdef WIN
 void _win_exit(int return_code){
 	exit(return_code);
