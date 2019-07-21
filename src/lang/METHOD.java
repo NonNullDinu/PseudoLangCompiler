@@ -96,8 +96,7 @@ public enum METHOD {
 			argTokens[lenm1] = cpy;
 		} else asm.append("\tmov $1, %r8\n");
 
-		for (int i = 0; i < argTokens.length; i++) {
-			Token[] a = argTokens[i];
+		for (Token[] a : argTokens) {
 			if (a[0] instanceof StringToken) {
 				if (!((StringToken) a[0]).str.equals("\"\\n\"")) {
 					_LANG_COMPILER.VarManager.VAR_ str = _LANG_COMPILER.lookupStringVar(".asciz " + ((StringToken) a[0]).str);
@@ -188,8 +187,8 @@ public enum METHOD {
 
 	@SuppressWarnings("unused")
 	CLOSE(((m, argTokens) -> {
-		if (argTokens[0][0] instanceof FILE_TOKEN) {
-			return "\tmovzxw var_" + _LANG_COMPILER.var_indices.get(((IdentifierToken) argTokens[0][1]).identifier) + ", %rax\n" +
+		if (argTokens[0][0] instanceof FILE_FULL_TOKEN) {
+			return "\tmovzxw var_" + _LANG_COMPILER.var_indices.get(((FILE_FULL_TOKEN) argTokens[0][0]).var_name) + ", %rax\n" +
 					"\tcall _f_close@PLT\n";
 		}
 		return "";
@@ -284,8 +283,8 @@ public enum METHOD {
 		}
 		DATA_TYPE type = tt.data_type();
 		StringBuilder asm = new StringBuilder();
-		for (int i = 0; i < argTokens.length; i++) {
-			_LANG_COMPILER.VarManager.VAR_ var = new _LANG_COMPILER.VarManager.VAR_(((IdentifierToken) argTokens[i][0]).identifier, type);
+		for (Token[] arg : argTokens) {
+			_LANG_COMPILER.VarManager.VAR_ var = new _LANG_COMPILER.VarManager.VAR_(((IdentifierToken) arg[0]).identifier, type);
 			_LANG_COMPILER.vars.add(var);
 			IdentifierToken.identifiers.forEach((IdentifierToken id) -> {
 				if (id.var == null && var.name.equals(id.identifier)) {
@@ -303,11 +302,11 @@ public enum METHOD {
 			_LANG_COMPILER.memory_constant.put(trueName, false);
 			_LANG_COMPILER.memory_required.put(trueName, true);
 			_LANG_COMPILER.var_indices.put(var.name, _LANG_COMPILER.var_ind++);
-			if (argTokens[i].length > 1 && argTokens[i][1] instanceof AssignmentToken) {
+			if (arg.length > 1 && arg[1] instanceof AssignmentToken) {
 				_LANG_COMPILER.rec_ind = 0;
 				asm.append("CLEAR_CACHE\n");
-				asm.append(_LANG_COMPILER.AssemblyMake.valueInstructions(_LANG_COMPILER.tokensFrom(argTokens[i], 2)));
-				asm.append("movq %r10, var_").append(_LANG_COMPILER.var_indices.get(((IdentifierToken) argTokens[i][0]).identifier)).append('\n');
+				asm.append(_LANG_COMPILER.AssemblyMake.valueInstructions(_LANG_COMPILER.tokensFrom(arg, 2)));
+				asm.append("movq %r10, var_").append(_LANG_COMPILER.var_indices.get(((IdentifierToken) arg[0]).identifier)).append('\n');
 				asm.append("CLEAR_CACHE\n");
 			}
 		}

@@ -493,14 +493,15 @@ movq    %rax, %rcx
 call    _win_exit@PLT
 .else
 pushq   %rax
-#movq    __exit@GOTPCREL(%rip), %rax
-#movq    $__exit_len, %rbx
-#movq    $STDERR, %r8
-#call    _print_string@PLT
-#movq    (%rsp), %rax
-#movq    $STDERR, %r8
-#call    _print_number@PLT
-#call    _print_new_line@PLT
+movq    $STDERR, %r8
+call    _print_new_line@PLT
+movq    __exit@GOTPCREL(%rip), %rax
+movq    $__exit_len, %rbx
+call    _print_string@PLT
+movq    (%rsp), %rax
+movq    $STDERR, %r8
+call    _print_number@PLT
+call    _print_new_line@PLT
 popq    %rdi
 movq    $SYS_EXIT, %rax
 syscall

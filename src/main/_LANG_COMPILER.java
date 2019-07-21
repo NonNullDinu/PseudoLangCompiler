@@ -70,6 +70,7 @@ public class _LANG_COMPILER {
 	private static List<OptimizationStrategy> optimizationStrategies = new ArrayList<>();
 	private static Map<String, Boolean> register_required = new HashMap<>();
 	public static Map<String, Boolean> memory_required = new HashMap<>();
+	private static Map<String, String> memory_register_value = new HashMap<>();
 	public static int var_ind = 0;
 	private static final String INDEX_REGISTER = "%rdi";
 	public static String preparations; // NEEDED FOR WORKING WITH ARRAYS
@@ -90,7 +91,6 @@ public class _LANG_COMPILER {
 	private static String jumpTrueLabel;
 	private static String nl = "\n";
 	private static String nlr = "\\n";
-	private static Map<String, Boolean> method_required = new HashMap<>();
 
 	private static void tokenizeProgram() {
 		statements = Parser.getStatements(parsed_src.toString());
@@ -211,6 +211,8 @@ public class _LANG_COMPILER {
 	}
 
 	public static REGISTER reg(String name) {
+		if (name.startsWith("%"))
+			name = name.substring(1);
 		return registerMap.get(name);
 	}
 
@@ -414,15 +416,6 @@ public class _LANG_COMPILER {
 			assembly = new StringBuilder(assembly.toString().replaceAll("\\t", ""));
 		}
 
-		private static String requiredFunctions() {
-			StringBuilder ext = new StringBuilder();
-			for (String s : method_required.keySet())
-				if (method_required.get(s)) {
-					ext.append("\t\t\t.extern ").append(s).append("\n");
-				}
-			return ext.toString();
-		}
-
 		private static String conditional(Token[] conditionTokens) {
 			return valueInstructions(conditionTokens);
 		}
@@ -473,7 +466,7 @@ public class _LANG_COMPILER {
 				String asm_ = preparations + "\tmovq " + val + ", %r10\n\tpushq %r10\n";
 				preparations = "";
 				val = value(valueTokens[2]);
-				asm_ += preparations + "\tpopq %r10\n\tmovq " + val + ", %r11\n";
+				asm_ += preparations + "\tmovq " + val + ", %r11\n\tpopq %r10\n";
 				if (alignment != 1)
 					asm_ += "\tleaq (,%r11," + alignment + "), %r11\n";
 				asm_ += "\t" + ((OperatorToken) valueTokens[1]).asm_code("r10", "r11") + "\n";
@@ -567,8 +560,8 @@ public class _LANG_COMPILER {
 									}
 								}
 								asm.append(valueInstructions(tokens2));
-								asm.append("\tmovq INTERNAL____CACHE+").append(a).append(", %r10\n");
 								asm.append("\tmovq INTERNAL____CACHE+").append(8 * cache_ptr).append(", %r11\n");
+								asm.append("\tmovq INTERNAL____CACHE+").append(a).append(", %r10\n");
 								asm.append(((OperatorToken) valueTokens[i]).asm_code("r10", "r11"));
 								if (depth != 0)
 									asm.append("movq %r10, INTERNAL____CACHE+").append(8 * (cache_ptr = a / 8)).append("\n");
@@ -593,8 +586,8 @@ public class _LANG_COMPILER {
 								asm.append(valueInstructions(tokens1));
 								a = 8 * cache_ptr;
 								asm.append(valueInstructions(tokens2));
-								asm.append("\tmovq INTERNAL____CACHE+").append(a).append(", %r10\n");
 								asm.append("\tmovq INTERNAL____CACHE+").append(8 * cache_ptr).append(", %r11\n");
+								asm.append("\tmovq INTERNAL____CACHE+").append(a).append(", %r10\n");
 								asm.append(((OperatorToken) valueTokens[i]).asm_code("r10", "r11"));
 								if (depth != 0)
 									asm.append("movq %r10, INTERNAL____CACHE+").append(8 * (cache_ptr = a / 8)).append("\n");
@@ -614,8 +607,8 @@ public class _LANG_COMPILER {
 								asm.append(valueInstructions(tokens1));
 								a = 8 * cache_ptr;
 								asm.append(valueInstructions(tokens2));
-								asm.append("\tmovq INTERNAL____CACHE+").append(a).append(", %r10\n");
 								asm.append("\tmovq INTERNAL____CACHE+").append(8 * cache_ptr).append(", %r11\n");
+								asm.append("\tmovq INTERNAL____CACHE+").append(a).append(", %r10\n");
 								asm.append(((OperatorToken) valueTokens[i]).asm_code("r10", "r11"));
 								if (depth != 0)
 									asm.append("movq %r10, INTERNAL____CACHE+").append(8 * (cache_ptr = a / 8)).append("\n");
@@ -635,8 +628,8 @@ public class _LANG_COMPILER {
 								asm.append(valueInstructions(tokens1));
 								a = 8 * cache_ptr;
 								asm.append(valueInstructions(tokens2));
-								asm.append("\tmovq INTERNAL____CACHE+").append(a).append(", %r10\n");
 								asm.append("\tmovq INTERNAL____CACHE+").append(8 * cache_ptr).append(", %r11\n");
+								asm.append("\tmovq INTERNAL____CACHE+").append(a).append(", %r10\n");
 								asm.append(((OperatorToken) valueTokens[i]).asm_code("r10", "r11"));
 								if (depth != 0)
 									asm.append("movq %r10, INTERNAL____CACHE+").append(8 * (cache_ptr = a / 8)).append("\n");
@@ -659,8 +652,8 @@ public class _LANG_COMPILER {
 								asm.append(valueInstructions(tokens1));
 								a = 8 * cache_ptr;
 								asm.append(valueInstructions(tokens2));
-								asm.append("\tmovq INTERNAL____CACHE+").append(a).append(", %r10\n");
 								asm.append("\tmovq INTERNAL____CACHE+").append(8 * cache_ptr).append(", %r11\n");
+								asm.append("\tmovq INTERNAL____CACHE+").append(a).append(", %r10\n");
 								asm.append(((OperatorToken) valueTokens[i]).asm_code("r10", "r11"));
 								if (depth != 0)
 									asm.append("movq %r10, INTERNAL____CACHE+").append(8 * (cache_ptr = a / 8)).append("\n");
@@ -684,7 +677,7 @@ public class _LANG_COMPILER {
 
 		private static void compileAssembly() {
 			try (FileOutputStream fout = new FileOutputStream(asm_source_file)) {
-				fout.write((requiredFunctions() + assembly.toString()).getBytes());
+				fout.write(assembly.toString().getBytes());
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -924,6 +917,7 @@ public class _LANG_COMPILER {
 					isCode = LINE.equals(".section .text");
 			}
 			optimized.append(".section .text\n");
+			REGISTER_ADDRESSING_SET rax = reg("rax").addressing, rdx = reg("rdx").addressing;
 			for (int i = 0; i < OPERATIONS.size(); i++) {
 				ASMOP asmop = OPERATIONS.get(i);
 				if (asmop.isLabel) {
@@ -933,6 +927,7 @@ public class _LANG_COMPILER {
 					for (String mem : memory_constant.keySet()) {
 						memory_constant.replace(mem, false);
 					}
+					memory_register_value.clear();
 				} else if (asmop.OP.equals("CLEAR_CACHE")) {
 					for (String mem : memory_constant.keySet()) {
 						if (mem.startsWith("INTERNAL____CACHE"))
@@ -956,10 +951,27 @@ public class _LANG_COMPILER {
 						if (operand.value_is_constant) {
 							operand.value = "$" + cvalue(check);
 							setConstant(check2, true, Integer.parseInt(operand.value.replace("$", "")));
-						} else setConstant(check2, false, 0);
+						} else {
+							setConstant(check2, false, 0);
+							String regval = memory_register_value.get(check);
+							if (regval != null) {
+								operand.value = regval;
+							}
+							if (isMemory(check2) && isRegister(check)) {
+								memory_register_value.put(check2, operand.value);
+							}
+						}
+						if (register.matcher(check2).matches()) {
+							String finalCheck = check2;
+							memory_register_value.values().removeIf((String s) -> reg(s).addressing == reg(finalCheck).addressing);
+						}
 					} else if (asmop.OP.matches("^lea.?$")) {
 						setConstant(check2, false, 0);
 						setConstant(check, false, 0); // ASSUME IT IS GOING TO BE MODIFIED
+						if (register.matcher(check2).matches()) {
+							String finalCheck = check2;
+							memory_register_value.values().removeIf((String s) -> reg(s).addressing == reg(finalCheck).addressing);
+						}
 					} else if (asmop.OP.matches("^(add|sub)(.?)$")) {
 						operand.value_is_constant = isConstant(check);
 						if (operand.value_is_constant) {
@@ -984,10 +996,11 @@ public class _LANG_COMPILER {
 					} else if (asmop.OP.matches("^(mul|div)(.?)$")) {
 						setConstant("%rax", false, 0);
 						setConstant("%rdx", false, 0);
+
+						memory_register_value.values().removeIf((String s) -> reg(s).addressing == rax || reg(s).addressing == rdx);
 					} else if (asmop.OP.equals("call")) {
 						for (String reg : registers_constant.keySet())
 							registers_constant.replace(reg, false);
-						method_required.put(asmop.arg1.value.endsWith("@PLT") ? asmop.arg1.value.substring(0, asmop.arg1.value.indexOf('@')) : asmop.arg1.value, true);
 					}
 				}
 			}
@@ -1208,7 +1221,7 @@ public class _LANG_COMPILER {
 				if (op.arg1 != null) {
 					optimized.append(op.OP.length() < 4 ? "\t" : "").append("\t\t").append(op.arg1.value);
 					if (op.arg2 != null)
-						optimized.append(",").append("\t".repeat(7 - (op.arg1.value.length() + 1) / 4)).append(op.arg2.value);
+						optimized.append(", ").append(op.arg2.value);
 				}
 				optimized.append(nl);
 			}
@@ -1218,11 +1231,25 @@ public class _LANG_COMPILER {
 				StringBuilder asm = new StringBuilder();
 				for (String line : assembly.toString().split("\n")) {
 					if (!(line.startsWith("\t") || line.contains(":") || line.startsWith(".section .")))
-						asm.append("\t\t\t").append(line).append("\n");
+						asm.append("\t\t").append(makeLineProcessing(line)).append("\n");
 					else if (!line.matches("^\\s*$")) asm.append(line).append("\n");
 				}
 				assembly = asm;
 			}
+		}
+
+		private static String makeLineProcessing(String line) {
+			return line.replaceAll("INTERNAL____CACHE\\+0", "INTERNAL____CACHE");
+		}
+
+		private static boolean isRegister(String check) {
+			return register.matcher(check).matches();
+		}
+
+		private static boolean isMemory(String name) {
+			if (NumberToken.isAsmImmediate(name))
+				return false;
+			else return !register.matcher(name).matches();
 		}
 
 		private static void setrequiredreg(String name, boolean required) {
