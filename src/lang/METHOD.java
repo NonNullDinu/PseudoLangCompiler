@@ -21,6 +21,9 @@ import main._LANG_COMPILER;
 import tokens.*;
 import variables.DATA_TYPE;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 import static main._LANG_COMPILER.AssemblyMake.value;
@@ -67,15 +70,18 @@ public enum METHOD {
 	READ((m, argTokens) -> {
 		StringBuilder asm = new StringBuilder();
 		if (argTokens[argTokens.length - 1].length > 2 && argTokens[argTokens.length - 1][argTokens[argTokens.length - 1].length - 2] instanceof FROM_TO_SPECIFIER_TOKEN) {
-			asm.append("\tmovzxw var_").append(_LANG_COMPILER.var_indices.get(((FILE_FULL_TOKEN) argTokens[argTokens.length - 1][argTokens[argTokens.length - 1].length - 1]).var_name)).append(", %r8\n");
+			String file_varname = ((FILE_FULL_TOKEN) argTokens[argTokens.length - 1][argTokens[argTokens.length - 1].length - 1]).var_name;
+			if (file_varname.equals("internal____console"))
+				asm.append("\tmovq $0, %r8\n");
+			else
+				asm.append("\tmovzxw var_").append(_LANG_COMPILER.var_indices.get(file_varname)).append(", %r8\n");
 			int lenm1 = argTokens.length - 1;
 			Token[] cpy = new Token[argTokens[lenm1].length - 1];
 			System.arraycopy(argTokens[lenm1], 0, cpy, 0, cpy.length);
 			argTokens[lenm1] = cpy;
 		} else asm.append("\tmov $0, %r8\n");
 
-		for (int i = 0; i < argTokens.length; i++) {
-			Token[] tk = argTokens[i];
+		for (Token[] tk : argTokens) {
 			_LANG_COMPILER.rec_ind = 0;
 			asm.append("\tcall _read_value@PLT\n\tpushq %rax\n");
 			preparations = "";
@@ -89,13 +95,17 @@ public enum METHOD {
 	WRITE((m, argTokens) -> {
 		StringBuilder asm = new StringBuilder();
 		if (argTokens[argTokens.length - 1].length >= 2 && argTokens[argTokens.length - 1][argTokens[argTokens.length - 1].length - 2] instanceof FROM_TO_SPECIFIER_TOKEN) {
-			asm.append("\tmovzxw var_").append(_LANG_COMPILER.var_indices.get(((FILE_FULL_TOKEN) argTokens[argTokens.length - 1][argTokens[argTokens.length - 1].length - 1]).var_name)).append(", %r8\n");
+			String file_varname = ((FILE_FULL_TOKEN) argTokens[argTokens.length - 1][argTokens[argTokens.length - 1].length - 1]).var_name;
+			if (file_varname.equals("internal____console"))
+				asm.append("\tmovq $1, %r8\n");
+			else
+				asm.append("\tmovzxw var_").append(_LANG_COMPILER.var_indices.get(file_varname)).append(", %r8\n");
 			int lenm1 = argTokens.length - 1;
-			Token[] cpy = new Token[lenm1 - 1];
+			Token[] cpy = new Token[argTokens[lenm1].length - 2];
 			System.arraycopy(argTokens[lenm1], 0, cpy, 0, cpy.length);
 			argTokens[lenm1] = cpy;
 		} else asm.append("\tmov $1, %r8\n");
-
+		System.out.println(Arrays.deepToString(argTokens));
 		for (Token[] a : argTokens) {
 			if (a[0] instanceof StringToken) {
 				if (!((StringToken) a[0]).str.equals("\"\\n\"")) {
@@ -122,17 +132,23 @@ public enum METHOD {
 	@SuppressWarnings("unused")
 	PRINT_BINARY((m, argTokens) -> {
 		StringBuilder asm = new StringBuilder();
+		if (argTokens[argTokens.length - 1].length >= 2 && argTokens[argTokens.length - 1][argTokens[argTokens.length - 1].length - 2] instanceof FROM_TO_SPECIFIER_TOKEN) {
+			String file_varname = ((FILE_FULL_TOKEN) argTokens[argTokens.length - 1][argTokens[argTokens.length - 1].length - 1]).var_name;
+			if (file_varname.equals("internal____console"))
+				asm.append("\tmovq $1, %r8\n");
+			else
+				asm.append("\tmovzxw var_").append(_LANG_COMPILER.var_indices.get(file_varname)).append(", %r8\n");
+			int lenm1 = argTokens.length - 1;
+			Token[] cpy = new Token[lenm1 - 1];
+			System.arraycopy(argTokens[lenm1], 0, cpy, 0, cpy.length);
+			argTokens[lenm1] = cpy;
+		} else asm.append("\tmov $1, %r8\n");
 
-		for (int i = 0; i < argTokens.length; i++) {
-			Token[] a = argTokens[i];
-			if (i == 0) {
-				if (a[0] instanceof FILE_TOKEN) {
-					asm.append("\tmovzxw var_").append(_LANG_COMPILER.var_indices.get(((IdentifierToken) a[1]).identifier)).append(", %r8\n");
-					continue;
-				} else asm.append("\tmov $1, %r8\n");
-			}
+		for (Token[] a : argTokens) {
 			_LANG_COMPILER.rec_ind = 0;
-			asm.append(_LANG_COMPILER.AssemblyMake.valueInstructions(a)).append("\tmov %r10, %rax\n\tcall _print_bin_number@PLT\n");
+			preparations = "";
+			String v = _LANG_COMPILER.AssemblyMake.valueInstructions(a);
+			asm.append(preparations).append(v).append("\tmov %r10, %rax\n\tcall _print_bin_number@PLT\n");
 		}
 		return asm.toString();
 	}),
@@ -144,7 +160,7 @@ public enum METHOD {
 		if (argTokens[argTokens.length - 1][lastLength - 2] instanceof AS_TOKEN && argTokens[argTokens.length - 1][lastLength - 1] instanceof FILE_FULL_TOKEN) {
 			FILE_FULL_TOKEN fileToken = ((FILE_FULL_TOKEN) argTokens[argTokens.length - 1][lastLength - 1]);
 			String name = fileToken.var_name;
-			int size = 0;
+			int size;
 			int begin = 0, end = 0;
 			for (int i = 0; i < argTokens[0].length; i++) {
 				if (argTokens[0][i] instanceof ParenthesisOpenedToken) {
@@ -311,6 +327,32 @@ public enum METHOD {
 			}
 		}
 		return asm.toString();
+	}),
+	@SuppressWarnings("unused")
+	DEFINE((m, argTokens) -> {
+		int as_ind = 0;
+		System.out.println(Arrays.deepToString(argTokens));
+		while (!(argTokens[0][as_ind] instanceof AS_TOKEN))
+			as_ind++;
+		Token[] expression = new Token[as_ind - 1];
+		System.arraycopy(argTokens[0], 0, expression, 0, expression.length);
+		String expressionName = ((IdentifierToken) expression[0]).identifier;
+		List<EXPRESSION_PARAMETER> parameters = new ArrayList<>();
+		if (expression.length > 1 && expression[1] instanceof ParenthesisOpenedToken) {
+			Token[] t = new Token[expression.length - 2];
+			System.arraycopy(expression, 2, t, 0, t.length);
+			System.out.println(Arrays.deepToString(t));
+			Token[][] tk = Objects.requireNonNull(_LANG_COMPILER.Parser.split_by_commas(t));
+			System.out.println(Arrays.deepToString(tk));
+			for (Token[] tokens : tk) {
+				parameters.add(new EXPRESSION_PARAMETER(((IdentifierToken) tokens[0]).identifier));
+			}
+		}
+		Token[] valueTokens = new Token[argTokens[0].length - as_ind - 1];
+		System.arraycopy(argTokens[0], as_ind + 1, valueTokens, 0, valueTokens.length);
+		System.out.println(Arrays.deepToString(valueTokens));
+		_LANG_COMPILER.expressions.add(new EXPRESSION(expressionName, parameters, _LANG_COMPILER.AssemblyMake.valueInstructions(valueTokens)));
+		return "";
 	});
 	private CALLBACK callback;
 

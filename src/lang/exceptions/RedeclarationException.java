@@ -17,7 +17,7 @@
 
 package lang.exceptions;
 
-public class RedeclarationException extends Error {
+class RedeclarationException extends Error {
 	public RedeclarationException(String message) {
 		super(message);
 	}

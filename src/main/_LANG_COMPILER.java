@@ -60,22 +60,23 @@ public class _LANG_COMPILER {
 	private static int internal_cache_index = 0;
 	private static int cache_ptr = 0;
 	public static int rec_ind = 0;
-	public static Map<String, Integer> var_indices = new HashMap<>();
-	private static Map<String, Boolean> registers_constant = new HashMap<>();
-	private static Map<String, Integer> registers_values = new HashMap<>();
-	private static Map<String, REGISTER> registerMap = new HashMap<>();
-	private static String regs = "rax%eax%ax%al%rcx%ecx%cx%cl%rdx%edx%dx%dl%rbx%ebx%bx%bl%rsi%esi%si%sil%rdi%edi%di%dil%rsp%esp%sp%spl%rbp%ebp%bp%bpl%r8%r8d%r8w%r8b%r9%r9d%r9w%r9b%r10%r10d%r10w%r10b%r11%r11d%r11w%r11b%r12%r12d%r12w%r12b%r13%r13d%r13w%r13b%r14%r14d%r14w%r14b%r15%r15d%r15w%r15b".replaceAll("%", " ");
-	public static Map<String, Boolean> memory_constant = new HashMap<>();
-	public static Map<String, Integer> memory_values = new HashMap<>();
-	private static List<OptimizationStrategy> optimizationStrategies = new ArrayList<>();
-	private static Map<String, Boolean> register_required = new HashMap<>();
-	public static Map<String, Boolean> memory_required = new HashMap<>();
-	private static Map<String, String> memory_register_value = new HashMap<>();
+	public static final Map<String, Integer> var_indices = new HashMap<>();
+	public static final Map<String, Boolean> memory_constant = new HashMap<>();
+	public static final Map<String, Integer> memory_values = new HashMap<>();
+	public static final Map<String, Boolean> memory_required = new HashMap<>();
+	public static final List<EXPRESSION> expressions = new ArrayList<>();
+	private static final Map<String, Boolean> registers_constant = new HashMap<>();
+	private static final Map<String, Integer> registers_values = new HashMap<>();
+	private static final Map<String, REGISTER> registerMap = new HashMap<>();
+	private static final String regs = "rax%eax%ax%al%rcx%ecx%cx%cl%rdx%edx%dx%dl%rbx%ebx%bx%bl%rsi%esi%si%sil%rdi%edi%di%dil%rsp%esp%sp%spl%rbp%ebp%bp%bpl%r8%r8d%r8w%r8b%r9%r9d%r9w%r9b%r10%r10d%r10w%r10b%r11%r11d%r11w%r11b%r12%r12d%r12w%r12b%r13%r13d%r13w%r13b%r14%r14d%r14w%r14b%r15%r15d%r15w%r15b".replaceAll("%", " ");
+	private static final List<OptimizationStrategy> optimizationStrategies = new ArrayList<>();
+	private static final Map<String, Boolean> register_required = new HashMap<>();
 	public static int var_ind = 0;
 	private static final String INDEX_REGISTER = "%rdi";
 	public static String preparations; // NEEDED FOR WORKING WITH ARRAYS
 	private static int alignment = 1;
 	private static String working_directory;
+	private static final Map<String, String> memory_register_value = new HashMap<>();
 
 	public static void addNewVar(String name, String value) {
 		dataVars.add(new VarManager.VAR_(name, DATA_TYPE.STRING, value));
@@ -89,8 +90,8 @@ public class _LANG_COMPILER {
 
 	private static String jumpFalseLabel;
 	private static String jumpTrueLabel;
-	private static String nl = "\n";
-	private static String nlr = "\\n";
+	private static final String nl = "\n";
+	private static final String nlr = "\\n";
 
 	private static void tokenizeProgram() {
 		statements = Parser.getStatements(parsed_src.toString());
@@ -949,7 +950,7 @@ public class _LANG_COMPILER {
 					if (asmop.OP.matches("^mov(zx)?(.?)$")) {
 						operand.value_is_constant = isConstant(check);
 						if (operand.value_is_constant) {
-							operand.value = "$" + cvalue(check);
+							operand.value = String.format("$%s", cvalue(check));
 							setConstant(check2, true, Integer.parseInt(operand.value.replace("$", "")));
 						} else {
 							setConstant(check2, false, 0);
@@ -1170,7 +1171,7 @@ public class _LANG_COMPILER {
 						}
 					}
 					if (op.OP.startsWith("lea") && op1.OP.startsWith("mov") && op1.arg1.value_is_immediate && op.arg2.value.equals(op1.arg2.value) && op.arg1.value.matches("^\\(," + op.arg2.value + ",\\d\\)$")) {
-						op1.arg1.value = "$" + (Integer.parseInt(op.arg1.value.substring(op.arg1.value.length() - 2, op.arg1.value.length() - 1)) * Integer.parseInt(op1.arg1.value.substring(1/*remove leading $*/)));
+						op1.arg1.value = String.format("$%d", Integer.parseInt(op.arg1.value.substring(op.arg1.value.length() - 2, op.arg1.value.length() - 1)) * Integer.parseInt(op1.arg1.value.substring(1/*remove leading $*/)));
 						OPERATIONS.remove(i);
 					}
 				}
@@ -1655,8 +1656,8 @@ public class _LANG_COMPILER {
 		}
 
 		public static Token[][] split_by_commas(Token[] t) {
-			int i = 1, j;
 			if (t.length == 0) return null;
+			int i = t[0] instanceof ParenthesisOpenedToken ? 1 : 0, j;
 			int args = 1, d = 0;
 			for (j = i; j < t.length; j++) {
 				if (t[j] instanceof ParenthesisOpenedToken)
@@ -1681,6 +1682,7 @@ public class _LANG_COMPILER {
 						break;
 					}
 				}
+				System.out.println(ptr_b + " " + ptr);
 				Token[] tkn = new Token[ptr - ptr_b];
 				ptr++;
 				System.arraycopy(t, ptr_b, tkn, 0, tkn.length);
@@ -1778,6 +1780,7 @@ public class _LANG_COMPILER {
 			else if (value.equals("of type") || value.equals("de tipul")) return new TYPE_SPECIFIER_TOKEN();
 			else if (value.equals("from") || value.equals("to")) return new FROM_TO_SPECIFIER_TOKEN();
 			else if (value.equals("as")) return new AS_TOKEN();
+			else if (value.equals("console")) return new FILE_FULL_TOKEN("internal____console");
 			else if (value.matches("^[a-zA-Z_][a-zA-Z0-9_]*$")) return new IdentifierToken(value, null, null);
 			else if (value.equals("\n")) return new NewLineToken();
 			else if (value.equals("!")) return new UnaryOperatorToken(UnaryOperatorToken.OP.LOGIC_NOT);
@@ -1879,7 +1882,7 @@ public class _LANG_COMPILER {
 	}
 
 	private static class INTERNAL____CACHE_TOKEN extends Token {
-		int qwordoffset;
+		final int qwordoffset;
 
 		INTERNAL____CACHE_TOKEN(int qwordoffset) {
 			this.qwordoffset = qwordoffset;

@@ -1,10 +1,11 @@
 declare n, i of type int
 declare f of type file_stream
 declare vec of type array[int]
+
 begin
 	open ("pseudo.in", read only) as file f
 	read n from file f
-	allocate vec, 100
+	dynamic_allocate vec, n+1
 	for i <- 1, n do
 	begin
 		read vec[i] from file f
@@ -13,8 +14,9 @@ begin
 	i <- n
 	while (i > 0) do
 	begin
-		write (3 * i + vec[i-1])* vec[i] + i * 5, " "
+		write vec[i], " " to console
 		i <- i - 1
 	end
+	dynamic_deallocate vec
 end
 exit

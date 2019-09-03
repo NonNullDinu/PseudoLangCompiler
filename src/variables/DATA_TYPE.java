@@ -25,7 +25,7 @@ public enum DATA_TYPE {
 	SHORT_INT(2, "w"),
 	POINTER(8, "q");
 	public int bytesize;
-	public String instrsuffix;
+	private String instrsuffix;
 
 	DATA_TYPE(int bytesize, String instrsuffix) {
 		this.bytesize = bytesize;

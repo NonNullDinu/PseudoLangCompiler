@@ -18,7 +18,7 @@
 package lang;
 
 public class REGISTER {
-	public int size;//bytes
+	private int size;//bytes
 	public String name;
 	public REGISTER_ADDRESSING_SET addressing;// one single register - multiple parts
 
@@ -27,7 +27,7 @@ public class REGISTER {
 		this.name = name;
 	}
 
-	public void setAddressing(REGISTER_ADDRESSING_SET regaddr) {
+	void setAddressing(REGISTER_ADDRESSING_SET regaddr) {
 		addressing = regaddr;
 	}
 }

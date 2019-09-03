@@ -17,7 +17,7 @@
 
 package lang.exceptions;
 
-public class SyntaxError extends ParsingError {
+class SyntaxError extends ParsingError {
 	public SyntaxError(String msg) {
 		super(msg);
 	}

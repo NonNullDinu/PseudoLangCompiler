@@ -38,10 +38,12 @@ public class ASMOP {
 		return this;
 	}
 
-	public void print() {
-		System.out.print(OP);
-		if (arg1 != null) System.out.print(" " + arg1.value);
-		if (arg2 != null) System.out.print(", " + arg2.value);
-		System.out.println();
-	}
+// --Commented out by Inspection START (7/22/19, 12:24 AM):
+//	public void print() {
+//		System.out.print(OP);
+//		if (arg1 != null) System.out.print(" " + arg1.value);
+//		if (arg2 != null) System.out.print(", " + arg2.value);
+//		System.out.println();
+//	}
+// --Commented out by Inspection STOP (7/22/19, 12:24 AM)
 }

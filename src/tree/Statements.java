@@ -28,7 +28,7 @@ public class Statements implements Iterable<Statement> {
 		this.statements = statements;
 	}
 
-	int ind = 0;
+	private int ind = 0;
 
 	@Override
 	public Iterator<Statement> iterator() {

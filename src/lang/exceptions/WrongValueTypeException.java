@@ -17,7 +17,7 @@
 
 package lang.exceptions;
 
-public class WrongValueTypeException extends Error {
+class WrongValueTypeException extends Error {
 	public WrongValueTypeException(String s) {
 		super(s);
 	}

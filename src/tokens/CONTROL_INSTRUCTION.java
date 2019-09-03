@@ -18,5 +18,5 @@
 package tokens;
 
 public enum CONTROL_INSTRUCTION {
-	RETURN, CONTINUE, BREAK
+	// --Commented out by Inspection (7/22/19, 12:24 AM):RETURN, // --Commented out by Inspection (7/22/19, 12:24 AM):CONTINUE, // --Commented out by Inspection (7/22/19, 12:24 AM):BREAK
 }

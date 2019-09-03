@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 
 public class UnaryOperatorToken extends Token {
 	public static String referenceVar = "";
-	public final OP op;
+	private final OP op;
 
 	public UnaryOperatorToken(OP op) {
 		this.op = op;
@@ -45,7 +45,7 @@ public class UnaryOperatorToken extends Token {
 			this.pattern = Pattern.quote(pattern);
 		}
 
-		public String asm_code(String reg) {
+		String asm_code(String reg) {
 			String asm = "";
 			switch (this) {
 				case BITWISE_NOT:

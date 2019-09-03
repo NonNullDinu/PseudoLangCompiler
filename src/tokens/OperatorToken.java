@@ -39,7 +39,7 @@ public class OperatorToken extends Token {
 		return "OP(" + mop.name() + ")";
 	}
 
-	static int LOGIC_TAG = 0;
+	private static int LOGIC_TAG = 0;
 
 	public enum Math_Operator {
 		ADD(Integer::sum), SUBTRACT((a, b) -> a - b), MULTIPLY((a, b) -> a * b), DIVIDE((a, b) -> a / b), LOGIC_AND((a, b) -> a != 0 && b != 0 ? 1 : 0), LOGIC_OR((a, b) -> a != 0 || b != 0 ? 1 : 0), LOGIC_XOR((a, b) -> a != 0 ^ b != 0 ? 1 : 0),
@@ -50,11 +50,13 @@ public class OperatorToken extends Token {
 			this.res = res;
 		}
 
-		public float op(int a, int b) {
-			return res.op(a, b);
-		}
+// --Commented out by Inspection START (7/22/19, 12:24 AM):
+//		public float op(int a, int b) {
+//			return res.op(a, b);
+//		}
+// --Commented out by Inspection STOP (7/22/19, 12:24 AM)
 
-		public static int log2(int bits) // returns 0 for bits=0
+		static int log2(int bits) // returns 0 for bits=0
 		{
 			int log = 0;
 			if ((bits & 0xffff0000) != 0) {
@@ -76,7 +78,7 @@ public class OperatorToken extends Token {
 			return log + (bits >>> 1);
 		}
 
-		public boolean isPow2(int x) {
+		boolean isPow2(int x) {
 			int bits = 0;
 			while (bits < 2 && x != 0) {
 				bits += x & 1;
@@ -85,7 +87,7 @@ public class OperatorToken extends Token {
 			return bits == 1;
 		}
 
-		public String asm_code(String a, String b) {
+		String asm_code(String a, String b) {
 			String asm = "";
 			boolean bvalue = b.matches(NumberToken.number);
 			int bv = 0;

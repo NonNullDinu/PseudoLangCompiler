@@ -19,6 +19,6 @@ package lang;
 
 import tokens.Token;
 
-public interface CALLBACK {
+interface CALLBACK {
 	String assembly(Method m, Token[][] argTokens);
 }

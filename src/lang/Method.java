@@ -21,7 +21,7 @@ import tree.Statements;
 
 public class Method {
 	public String name;
-	public Statements body;
+	private Statements body;
 
 	public Method(String name, Statements body) {
 		this.name = name;

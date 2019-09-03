@@ -18,7 +18,7 @@
 package tokens;
 
 public class ControlToken extends Token {
-	public final CONTROL_INSTRUCTION instr;
+	private final CONTROL_INSTRUCTION instr;
 
 	public ControlToken(CONTROL_INSTRUCTION instr) {
 		super();

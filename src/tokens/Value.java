@@ -21,10 +21,10 @@ import variables.*;
 
 public class Value {
 	public byte[] vbs;
-	public DATA_TYPE type;
+	private DATA_TYPE type;
 	public int vi;
-	public boolean vb;
-	public String vs;
+	private boolean vb;
+	private String vs;
 
 	public Value(int v) {
 		this.type = DATA_TYPE.INT;

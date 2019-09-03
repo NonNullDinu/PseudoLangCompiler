@@ -18,12 +18,11 @@
 package statements;
 
 import tokens.Token;
-import variables.DATA_TYPE;
 
 public class VarUpdate_Statement extends Statement {
 	public final Token[] value;
 	public final Token name;
-	public DATA_TYPE dt;
+	// --Commented out by Inspection (7/22/19, 12:24 AM):public DATA_TYPE dt;
 
 	public VarUpdate_Statement(Token name, Token[] value) {
 		super(Statement_TYPE.VAR_UPDATE);

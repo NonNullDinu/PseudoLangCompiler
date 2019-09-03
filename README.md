@@ -148,6 +148,14 @@ After the execution of this, p will have the value <code>1</code> if x is perfec
 p must be a variable.
 
 ## Working with arrays
+
+### Declaration
+The declaration of an arrays is done like this:
+<pre>declare &lt;name&gt; of type array[&lt;element_type&gt;]</pre>
+
+An example:
+<pre>declare A of type array\[int]</pre>
+
 ### Static allocation of an array
 Syntax:
 <pre>allocate &lt;name>, &lt;size></pre>
@@ -162,6 +170,9 @@ Syntax:
 <pre>dynamic_allocate &lt;name>, &lt;size></pre>
 The parameter name is the name of the array.
 The parameter size is a constant number(expressions not allowed here).
+
+##### Important!
+The array MUST be allocated before it is used.
 
 ### Dynamic deallocation
 Syntax:

@@ -17,6 +17,6 @@
 
 package lang;
 
-public class STDLIB {
+class STDLIB {
 
 }

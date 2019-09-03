@@ -24,7 +24,7 @@ import tokens.Token;
 public class MethodCallStatement extends Statement {
 	private final Token[][] argTokens;
 	private final METHOD method;
-	public Method def_m = null;
+	private Method def_m = null;
 
 	public MethodCallStatement(METHOD method, Token[][] v) {
 		super(Statement_TYPE.METHOD_CALL);
